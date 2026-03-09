@@ -446,3 +446,273 @@ input[type="number"]:focus {
     .player-grid { grid-template-columns: repeat(4, 1fr); }
     .action-grid { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ================================================================
+   record.php v2 — スプリットビュー記録UI
+   ================================================================ */
+
+/* フルスクリーンレイアウト */
+.record-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;        /* iOS Safari 対応の動的ビューポート */
+    overflow: hidden;
+    padding-bottom: 0;     /* 既定の body padding を上書き */
+    background: #111827;
+}
+
+/* --- フェーズヘッダー --- */
+.phase-header {
+    display: flex;
+    align-items: stretch;
+    background: #1565c0;   /* OFデフォルト: ディープブルー */
+    flex-shrink: 0;
+    transition: background .25s;
+}
+.phase-header[data-phase="defense"] { background: #7f1d1d; }
+
+.back-btn-sm {
+    display: flex;
+    align-items: center;
+    padding: 0 .7rem;
+    color: #fff;
+    font-size: 1.4rem;
+    text-decoration: none;
+    background: rgba(0,0,0,.25);
+    flex-shrink: 0;
+    transition: background .15s;
+}
+.back-btn-sm:hover { background: rgba(0,0,0,.4); }
+
+.phase-tabs {
+    display: flex;
+    flex: 1;
+}
+
+.phase-tab {
+    flex: 1;
+    padding: .75rem .3rem;
+    border: none;
+    border-bottom: 3px solid transparent;
+    background: rgba(0,0,0,.25);
+    color: rgba(255,255,255,.55);
+    font-weight: 700;
+    font-size: .88rem;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+    letter-spacing: .03em;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+.phase-tab.active {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    border-bottom-color: #fff;
+}
+
+.clock {
+    display: flex;
+    align-items: center;
+    padding: 0 .6rem;
+    color: rgba(255,255,255,.6);
+    font-size: .75rem;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- スプリットビュー --- */
+.split-view {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* ===== 選手パネル（左42%） ===== */
+.player-panel {
+    width: 42%;
+    background: #1e2235;
+    border-right: 1px solid rgba(255,255,255,.08);
+    display: flex;
+    flex-direction: column;
+    padding: .4rem;
+    gap: .3rem;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.panel-label {
+    text-align: center;
+    font-size: .6rem;
+    font-weight: 700;
+    color: rgba(255,255,255,.35);
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    flex-shrink: 0;
+}
+
+.player-grid-v2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .3rem;
+    flex: 1;
+    min-height: 0;
+}
+
+.player-btn-v2 {
+    background: #2a2d45;
+    border: 1.5px solid rgba(255,255,255,.12);
+    border-radius: 8px;
+    color: #d0d0e8;
+    font-size: .95rem;
+    font-weight: 800;
+    font-family: var(--font);
+    cursor: pointer;
+    text-align: center;
+    padding: .2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .12s, border-color .12s, color .12s;
+}
+.player-btn-v2:active { filter: brightness(.8); }
+.player-btn-v2.active {
+    background: #2e7d32;
+    border-color: #66bb6a;
+    color: #fff;
+    box-shadow: 0 0 8px rgba(102,187,106,.4);
+}
+
+/* ===== 行為パネル（右 残り幅） ===== */
+.action-panel {
+    flex: 1;
+    background: #111827;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: .4rem;
+    min-width: 0;
+}
+
+.action-section-label {
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    padding: .35rem .2rem .2rem;
+    margin-top: .1rem;
+}
+.success-label { color: #90caf9; }
+.fail-label    { color: #ef9a9a; }
+.special-label { color: #ffe082; }
+
+.action-grid-v2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .3rem;
+    margin-bottom: .5rem;
+}
+
+.action-btn-v2 {
+    padding: .7rem .25rem;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    font-size: .82rem;
+    font-weight: 700;
+    font-family: var(--font);
+    cursor: pointer;
+    text-align: center;
+    line-height: 1.25;
+    transition: filter .12s, border-color .12s, transform .1s, box-shadow .12s;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+.action-btn-v2:active { transform: scale(.92); filter: brightness(.8); }
+.action-btn-v2.selected {
+    border-color: #fff;
+    filter: brightness(1.3);
+    box-shadow: 0 0 0 3px rgba(255,255,255,.35);
+}
+
+/* 行為ボタンの色 */
+.of-success  { background: #1565c0; color: #fff; }   /* 青: OF成功 */
+.of-fail     { background: #b71c1c; color: #fff; }   /* 赤: OF失敗 */
+.of-special  { background: #e65100; color: #fff; }   /* 橙: OF特殊(キーパス等) */
+.df-success  { background: #1565c0; color: #fff; }   /* 青: DF成功 */
+.df-negative { background: #b71c1c; color: #fff; }   /* 赤: DF失敗 */
+.df-special  { background: #f57f17; color: #111; }   /* 黄: スプリント等 */
+
+/* ===== フッター ===== */
+.record-footer {
+    background: #1e2235;
+    border-top: 1px solid rgba(255,255,255,.1);
+    padding: .45rem .55rem;
+    flex-shrink: 0;
+    /* iOS ホームバー考慮 */
+    padding-bottom: max(.45rem, env(safe-area-inset-bottom));
+}
+
+.status-bar {
+    font-size: .72rem;
+    color: rgba(255,255,255,.38);
+    text-align: center;
+    margin-bottom: .4rem;
+    min-height: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.status-bar.status-player { color: #ffe082; }
+.status-bar.status-ready  { color: #a5d6a7; font-weight: 700; }
+
+.footer-buttons {
+    display: flex;
+    gap: .5rem;
+}
+
+.register-btn {
+    flex: 1;
+    background: #1565c0;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    font-family: var(--font);
+    padding: .85rem;
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+.register-btn:active { transform: scale(.97); background: #0d47a1; }
+.register-btn:disabled {
+    background: #2a2d45;
+    color: rgba(255,255,255,.25);
+    cursor: default;
+}
+
+.undo-btn {
+    background: #e65100;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: .92rem;
+    font-weight: 700;
+    font-family: var(--font);
+    padding: .85rem .9rem;
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    white-space: nowrap;
+}
+.undo-btn:active  { transform: scale(.97); background: #bf360c; }
+.undo-btn:disabled {
+    background: #2a2d45;
+    color: rgba(255,255,255,.25);
+    cursor: default;
+}

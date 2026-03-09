@@ -43,6 +43,28 @@ CREATE TABLE IF NOT EXISTS logs (
     FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ----------------------------------------------------------------
+-- play_logs — 記録入力画面（record.php）からの一括保存テーブル
+--
+-- 構造:
+--   batch_id    : 同一「登録」操作のグループID（Undo に使用）
+--   player_name : 選手名（hiragana固定12名）
+--   action      : 行為名
+--   phase       : 'offense' | 'defense'
+--   created_at  : 自動タイムスタンプ
+-- ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS play_logs (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    batch_id    VARCHAR(64)  NOT NULL,
+    player_name VARCHAR(50)  NOT NULL,
+    action      VARCHAR(100) NOT NULL,
+    phase       ENUM('offense','defense') NOT NULL,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_batch   (batch_id),
+    INDEX idx_created (created_at),
+    INDEX idx_player  (player_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- サンプルデータ（行為マスター）
 INSERT INTO actions (name, point_value, category) VALUES
     ('パス成功',        1, 'positive'),
