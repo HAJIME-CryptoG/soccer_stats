@@ -36,6 +36,7 @@ try {
         $phase    = trim($_POST['phase']    ?? '');
         $batch_id = trim($_POST['batch_id'] ?? '');
         $acts_raw = (array)($_POST['acts']  ?? []);
+        $match_id = filter_input(INPUT_POST, 'match_id', FILTER_VALIDATE_INT) ?: null;
 
         // 行為リスト: 空文字・重複除去
         $acts = array_values(array_unique(
@@ -61,13 +62,13 @@ try {
 
         // ---- 一括 INSERT ----
         $stmt = $pdo->prepare(
-            'INSERT INTO play_logs (batch_id, player_name, action, phase)
-             VALUES (?, ?, ?, ?)'
+            'INSERT INTO play_logs (batch_id, player_name, action, phase, match_id)
+             VALUES (?, ?, ?, ?, ?)'
         );
 
         $pdo->beginTransaction();
         foreach ($acts as $act) {
-            $stmt->execute([$batch_id, $player, $act, $phase]);
+            $stmt->execute([$batch_id, $player, $act, $phase, $match_id]);
         }
         $pdo->commit();
 

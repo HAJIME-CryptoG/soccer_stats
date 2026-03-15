@@ -521,6 +521,34 @@ input[type="number"]:focus {
     font-variant-numeric: tabular-nums;
 }
 
+/* --- 試合選択バー --- */
+.match-bar {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    background: #1e2235;
+    padding: .4rem .7rem;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.match-bar label {
+    color: rgba(255,255,255,.6);
+    font-size: .9rem;
+    flex-shrink: 0;
+}
+.match-bar select {
+    flex: 1;
+    background: #2a2f45;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 6px;
+    padding: .3rem .5rem;
+    font-size: .82rem;
+    font-family: var(--font);
+    -webkit-appearance: none;
+}
+.match-bar select:focus { outline: none; border-color: #4fa3ff; }
+
 /* --- スプリットビュー --- */
 .split-view {
     display: flex;
