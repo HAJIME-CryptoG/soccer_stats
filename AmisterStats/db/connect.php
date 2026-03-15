@@ -1,9 +1,9 @@
 <?php
 // DB接続設定 — 本番環境では環境変数や .env ファイルで管理してください
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_NAME', getenv('DB_NAME') ?: 'amisterstats');
-define('DB_USER', getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASS') ?: '');
+define('DB_HOST', getenv('DB_HOST') ?: 'mysql10087.xserver.jp');
+define('DB_NAME', getenv('DB_NAME') ?: 'xs228925_soccerstats');
+define('DB_USER', getenv('DB_USER') ?: 'xs228925_hajime');
+define('DB_PASS', getenv('DB_PASS') ?: 'soccer2024');
 define('DB_CHARSET', 'utf8mb4');
 
 function get_pdo(): PDO {
