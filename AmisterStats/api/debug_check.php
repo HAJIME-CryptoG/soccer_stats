@@ -18,6 +18,19 @@ $result['db_host'] = DB_HOST;
 $result['db_name'] = DB_NAME;
 $result['db_user'] = DB_USER;
 
+// 直接接続テスト（connect.phpを経由しない）
+try {
+    $direct = new PDO(
+        'mysql:host=mysql10087.xserver.jp;dbname=xs228925_soccerstats;charset=utf8mb4',
+        'xs228925_hajime',
+        'soccer2024',
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+    );
+    $result['direct_connect'] = 'OK';
+} catch (Exception $e) {
+    $result['direct_connect'] = 'FAILED: ' . $e->getMessage();
+}
+
 try {
     $pdo = get_pdo();
     $result['db_connect'] = 'OK';
