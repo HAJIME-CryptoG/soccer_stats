@@ -106,7 +106,8 @@ try {
     }
 
 } catch (PDOException $e) {
-    if ($pdo->inTransaction()) {
+    // $pdo が未定義の場合（接続失敗時）を考慮してチェック
+    if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
     respond_error(500, 'DB エラー: ' . $e->getMessage());
@@ -115,7 +116,8 @@ try {
 }
 
 /* ---- エラーレスポンスヘルパー ---- */
-function respond_error(int $code, string $message): never {
+// 戻り値型 never は PHP 8.1+ のため、互換性のため省略
+function respond_error(int $code, string $message): void {
     http_response_code($code);
     echo json_encode(['success' => false, 'message' => $message]);
     exit;
