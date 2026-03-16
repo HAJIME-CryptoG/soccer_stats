@@ -1,5 +1,5 @@
 <?php
-// 集計画面 — Chart.js によるスパイダーチャートと集計テーブル
+// 集計画面 — マトリックス表 + スパイダーチャート
 require_once __DIR__ . '/db/connect.php';
 
 try {
@@ -7,17 +7,18 @@ try {
     $matches = $pdo->query(
         'SELECT id, match_date, opponent FROM matches ORDER BY match_date DESC, id DESC'
     )->fetchAll();
-    $players = $pdo->query(
-        'SELECT id, name, number FROM players ORDER BY number ASC'
-    )->fetchAll();
+    // 選手リストを play_logs から動的取得
+    $player_names = $pdo->query(
+        "SELECT DISTINCT player_name FROM play_logs ORDER BY player_name"
+    )->fetchAll(PDO::FETCH_COLUMN);
     $db_ok = true;
 } catch (Exception $e) {
     $db_ok    = false;
     $db_error = $e->getMessage();
 }
 
-$filter_match_id  = $_GET['match_id']  ?? '';
-$filter_player_id = $_GET['player_id'] ?? '';
+$filter_match_id   = $_GET['match_id']    ?? '';
+$filter_player_name = $_GET['player_name'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -27,8 +28,65 @@ $filter_player_id = $_GET['player_id'] ?? '';
     <meta name="theme-color" content="#1565c0">
     <title>集計を見る — AmisterStats</title>
     <link rel="stylesheet" href="css/style.css">
-    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* マトリックス表タブ */
+        .matrix-tabs {
+            display: flex;
+            gap: .5rem;
+            margin-bottom: .8rem;
+        }
+        .matrix-tab {
+            flex: 1;
+            padding: .5rem;
+            border: none;
+            border-radius: 6px;
+            background: #e0e0e0;
+            color: #555;
+            font-weight: 700;
+            font-size: .85rem;
+            cursor: pointer;
+            font-family: var(--font);
+            transition: background .15s, color .15s;
+        }
+        .matrix-tab.active {
+            background: #1565c0;
+            color: #fff;
+        }
+        .matrix-tab.df-active {
+            background: #b71c1c;
+            color: #fff;
+        }
+        .table-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .matrix-table {
+            border-collapse: collapse;
+            font-size: .8rem;
+            min-width: 100%;
+        }
+        .matrix-table th,
+        .matrix-table td {
+            border: 1px solid #ddd;
+            padding: .3rem .4rem;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .matrix-table th {
+            background: #f0f4ff;
+            font-weight: 700;
+        }
+        .matrix-table td:first-child {
+            text-align: left;
+            font-weight: 600;
+            background: #fafafa;
+            position: sticky;
+            left: 0;
+        }
+        .matrix-table td.zero { color: #ccc; }
+        .matrix-table td.has-val { color: #1565c0; font-weight: 700; }
+    </style>
 </head>
 <body>
     <header class="app-header" style="background:#1565c0;">
@@ -59,18 +117,26 @@ $filter_player_id = $_GET['player_id'] ?? '';
                 </div>
                 <div class="form-group">
                     <label for="f-player">選手</label>
-                    <select id="f-player" name="player_id">
+                    <select id="f-player" name="player_name">
                         <option value="">全選手</option>
-                        <?php foreach ($players as $p): ?>
-                            <option value="<?= $p['id'] ?>"
-                                <?= $filter_player_id == $p['id'] ? 'selected' : '' ?>>
-                                #<?= (int)$p['number'] ?> <?= htmlspecialchars($p['name']) ?>
+                        <?php foreach ($player_names as $pname): ?>
+                            <option value="<?= htmlspecialchars($pname) ?>"
+                                <?= $filter_player_name === $pname ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($pname) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
                 <button class="btn btn-primary btn-block" type="submit">集計を更新</button>
             </form>
+        </div>
+
+        <!-- マトリックス表（チャートの前） -->
+        <div class="card">
+            <div class="card-title">行為マトリックス</div>
+            <div id="matrix-wrapper">
+                <div class="spinner"></div>
+            </div>
         </div>
 
         <!-- スパイダーチャート -->
@@ -84,14 +150,6 @@ $filter_player_id = $_GET['player_id'] ?? '';
             </p>
         </div>
 
-        <!-- 集計テーブル -->
-        <div class="card">
-            <div class="card-title">選手別 合計ポイント</div>
-            <div id="stats-table-wrapper">
-                <div class="spinner"></div>
-            </div>
-        </div>
-
         <?php endif; ?>
     </main>
 
@@ -99,21 +157,21 @@ $filter_player_id = $_GET['player_id'] ?? '';
     <script src="js/chart_config.js"></script>
     <script>
     (function () {
-        const matchId  = <?= json_encode($filter_match_id  ?: null) ?>;
-        const playerId = <?= json_encode($filter_player_id ?: null) ?>;
+        const matchId    = <?= json_encode($filter_match_id    ?: null) ?>;
+        const playerName = <?= json_encode($filter_player_name ?: null) ?>;
 
-        // クエリパラメータ組み立て
         const params = new URLSearchParams();
-        if (matchId)  params.set('match_id',  matchId);
-        if (playerId) params.set('player_id', playerId);
+        if (matchId)    params.set('match_id',    matchId);
+        if (playerName) params.set('player_name', playerName);
 
         const apiUrl = 'api/get_stats.php' + (params.toString() ? '?' + params.toString() : '');
 
         fetch(apiUrl)
             .then(r => r.json())
             .then(data => {
-                // チャート描画
-                const canvas = document.getElementById('spider-chart');
+                renderMatrix(data);
+
+                const canvas   = document.getElementById('spider-chart');
                 const emptyMsg = document.getElementById('chart-empty');
                 if (data.players && data.players.length > 0) {
                     AmisterChart.renderChart(canvas, data);
@@ -122,49 +180,66 @@ $filter_player_id = $_GET['player_id'] ?? '';
                     canvas.style.display = 'none';
                     emptyMsg.style.display = '';
                 }
-
-                // テーブル描画
-                renderTable(data);
             })
             .catch(err => {
-                document.getElementById('stats-table-wrapper').innerHTML =
+                document.getElementById('matrix-wrapper').innerHTML =
                     '<p class="flash error">データ取得エラー</p>';
                 console.error(err);
             });
 
-        function renderTable(data) {
-            const wrapper = document.getElementById('stats-table-wrapper');
-            if (!data.players || data.players.length === 0) {
+        /* ---- マトリックス表の描画 ---- */
+        function renderMatrix(data) {
+            const wrapper  = document.getElementById('matrix-wrapper');
+            const players  = data.players  || [];
+            const ofActions = data.of_actions || [];
+            const dfActions = data.df_actions || [];
+
+            if (players.length === 0) {
                 wrapper.innerHTML = '<p class="text-muted text-center" style="font-size:.85rem;">データなし</p>';
                 return;
             }
 
-            // 選手を合計ポイント降順でソート
-            const sorted = [...data.players].sort((a, b) => b.total_points - a.total_points);
+            let html = `
+                <div class="matrix-tabs">
+                    <button class="matrix-tab active" id="tab-of"
+                            onclick="switchMatrix('offense')">🔵 オフェンス</button>
+                    <button class="matrix-tab" id="tab-df"
+                            onclick="switchMatrix('defense')">🔴 ディフェンス</button>
+                </div>
+            `;
 
-            let html = '<table class="stats-table"><thead><tr>'
-                + '<th>選手</th><th>合計pt</th>';
+            html += buildTable('matrix-offense', players, ofActions, 'offense', '');
+            html += buildTable('matrix-defense', players, dfActions, 'defense', 'display:none');
 
-            // 行為列ヘッダー
-            data.actions.forEach(a => {
-                html += `<th title="${escHtml(a.name)}">${escHtml(a.name)}</th>`;
-            });
-            html += '</tr></thead><tbody>';
-
-            sorted.forEach((player, rank) => {
-                const medal = rank === 0 ? '&#127945;' : rank === 1 ? '&#129352;' : rank === 2 ? '&#129353;' : '';
-                html += `<tr><td>${medal} #${player.number} ${escHtml(player.name)}</td>`;
-                html += `<td><strong>${player.total_points}</strong></td>`;
-                data.actions.forEach(a => {
-                    const entry = player.actions[a.id];
-                    html += `<td>${entry ? entry.count : 0}</td>`;
-                });
-                html += '</tr>';
-            });
-
-            html += '</tbody></table>';
             wrapper.innerHTML = html;
         }
+
+        function buildTable(id, players, actions, phase, style) {
+            let h = `<div id="${id}" style="${style}"><div class="table-scroll">`;
+            h += '<table class="matrix-table"><thead><tr><th>選手</th>';
+            actions.forEach(a => { h += `<th>${escHtml(a)}</th>`; });
+            h += '</tr></thead><tbody>';
+            players.forEach(p => {
+                h += `<tr><td>${escHtml(p.name)}</td>`;
+                actions.forEach(a => {
+                    const cnt = p[phase] && p[phase][a] ? p[phase][a] : 0;
+                    const cls = cnt > 0 ? 'has-val' : 'zero';
+                    h += `<td class="${cls}">${cnt > 0 ? cnt : '–'}</td>`;
+                });
+                h += '</tr>';
+            });
+            h += '</tbody></table></div></div>';
+            return h;
+        }
+
+        window.switchMatrix = function(phase) {
+            document.getElementById('matrix-offense').style.display = phase === 'offense' ? '' : 'none';
+            document.getElementById('matrix-defense').style.display = phase === 'defense' ? '' : 'none';
+            const tabOf = document.getElementById('tab-of');
+            const tabDf = document.getElementById('tab-df');
+            tabOf.className = 'matrix-tab' + (phase === 'offense' ? ' active' : '');
+            tabDf.className = 'matrix-tab' + (phase === 'defense' ? ' df-active' : '');
+        };
 
         function escHtml(str) {
             return String(str)

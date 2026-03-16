@@ -1,16 +1,26 @@
 <?php
 /**
  * record.php — アミスター・スタッツ 記録入力画面
- *
- * 画面構成:
- *   ・上部: オフェンス / ディフェンス 切り替えタブ
- *   ・左 (42%): 選手ボタン 2列×6行
- *   ・右 (58%): 行為ボタン（複数選択可、色分け）
- *   ・下部: ステータス表示 / 登録ボタン / Undoボタン
- *
- * 選手を1名選択 → 行為を複数タップ → 「登録」で play_logs へ一括保存
- * Undoボタンで直前バッチを取り消し
  */
+require_once __DIR__ . '/db/connect.php';
+
+/* ---- DB: 試合リスト取得 + match_id カラムのマイグレーション ---- */
+$matches = [];
+try {
+    $pdo = get_pdo();
+
+    // play_logs に match_id カラムが存在しなければ自動追加
+    $cols = $pdo->query("SHOW COLUMNS FROM play_logs LIKE 'match_id'")->fetchAll();
+    if (empty($cols)) {
+        $pdo->exec("ALTER TABLE play_logs ADD COLUMN match_id INT UNSIGNED NULL DEFAULT NULL");
+    }
+
+    $matches = $pdo->query(
+        'SELECT id, match_date, opponent FROM matches ORDER BY match_date DESC, id DESC'
+    )->fetchAll();
+} catch (Exception $e) {
+    // DB 接続失敗は無視（試合リストなしで動作）
+}
 
 /* ---- 固定データ ---- */
 $players = [
@@ -99,6 +109,21 @@ function esc(string $s): string {
 
     <span class="clock" id="clock" aria-live="off"></span>
 </header>
+
+<!-- ================================================================
+     試合選択バー
+     ================================================================ -->
+<div class="match-bar">
+    <label for="matchSelect">🏟️</label>
+    <select id="matchSelect" onchange="state.matchId = this.value || null">
+        <option value="">試合を選択（任意）</option>
+        <?php foreach ($matches as $m): ?>
+        <option value="<?= esc((string)$m['id']) ?>">
+            <?= esc($m['match_date']) ?> vs <?= esc($m['opponent']) ?>
+        </option>
+        <?php endforeach; ?>
+    </select>
+</div>
 
 <!-- ================================================================
      スプリットビュー：左=選手 / 右=行為
@@ -227,6 +252,7 @@ const state = {
     selectedPlayer:  null,       // 選択中の選手名
     selectedActions: [],         // 選択中の行為名リスト
     lastBatchId:     null,       // 直前バッチID（Undo用）
+    matchId:         null,       // 選択中の試合ID
 };
 
 /* ---------- 時計 ---------- */
@@ -353,6 +379,7 @@ window.register = async function () {
     body.append('player',   state.selectedPlayer);
     body.append('phase',    state.phase);
     body.append('batch_id', batchId);
+    if (state.matchId) body.append('match_id', state.matchId);
     state.selectedActions.forEach(a => body.append('acts[]', a));
 
     try {
