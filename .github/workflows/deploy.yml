@@ -17,10 +17,9 @@ jobs:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: |
-          sudo apt-get install -y lftp
+          sudo apt-get install -y lftp sshpass
           USER_CLEAN=$(echo -n "$FTP_USER" | tr -d '\n\r')
           PASS_CLEAN=$(echo -n "$FTP_PASS" | tr -d '\n\r')
+          export SSHPASS="$PASS_CLEAN"
           lftp -d \
-            -u "$USER_CLEAN,$PASS_CLEAN" \
-            -e "set sftp:auto-confirm yes; set net:timeout 30; set net:max-retries 3; ls; mirror -R --delete AmisterStats/ /xs228925/xs228925.xsrv.jp/public_html/AmisterStats/; quit" \
-            sftp://sv10868.xserver.jp:10022
+            -e "set sftp:connect-program 'sshpass -e ssh -a -x -o StrictHostKeyChecking=no'; open -u $USER_CLEAN sftp://sv10868.xserver.jp:10022; ls; mirror -R --delete AmisterStats/ /xs228925/xs228925.xsrv.jp/public_html/AmisterStats/; quit"
