@@ -17,11 +17,12 @@ jobs:
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: |
           sudo apt-get install -y lftp
-          lftp -c "
+          lftp -d -c "
             set sftp:auto-confirm yes;
             set net:timeout 30;
             set net:max-retries 3;
             open -u ${{ secrets.FTP_USER }},$FTP_PASS sftp://sv10868.xserver.jp:10022;
+            ls;
             mirror -R --delete AmisterStats/ /xs228925/xs228925.xsrv.jp/public_html/AmisterStats/;
             quit
           "
