@@ -5,7 +5,7 @@ require_once __DIR__ . '/db/connect.php';
 try {
     $pdo = get_pdo();
     $matches = $pdo->query(
-        'SELECT id, match_date, opponent FROM matches ORDER BY match_date DESC, id DESC'
+        'SELECT id, match_date, opponent, match_type, tournament_name FROM matches ORDER BY match_date DESC, id DESC'
     )->fetchAll();
     // 選手リストを play_logs から動的取得
     $player_names = $pdo->query(
@@ -110,7 +110,11 @@ $filter_player_name = $_GET['player_name'] ?? '';
                         <?php foreach ($matches as $m): ?>
                             <option value="<?= $m['id'] ?>"
                                 <?= $filter_match_id == $m['id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($m['match_date']) ?> vs <?= htmlspecialchars($m['opponent']) ?>
+                                <?php
+                                    $type_label = ($m['match_type'] ?? 'friendly') === 'official' ? '🏆' : '🤝';
+                                    $tournament = !empty($m['tournament_name']) ? ' [' . htmlspecialchars($m['tournament_name']) . ']' : '';
+                                    echo $type_label . htmlspecialchars($m['match_date']) . $tournament . ' vs ' . htmlspecialchars($m['opponent']);
+                                ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

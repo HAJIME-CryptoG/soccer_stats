@@ -40,17 +40,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
         } elseif ($type === 'match') {
-            $date     = $_POST['match_date']     ?? '';
-            $opponent = trim($_POST['opponent']  ?? '');
-            $location = trim($_POST['location']  ?? '');
+            $date            = $_POST['match_date']       ?? '';
+            $opponent        = trim($_POST['opponent']    ?? '');
+            $location        = trim($_POST['location']    ?? '');
+            $match_type      = $_POST['match_type'] === 'official' ? 'official' : 'friendly';
+            $tournament_name = $match_type === 'official' ? trim($_POST['tournament_name'] ?? '') : '';
 
             if (!$date || !$opponent) {
                 $flash[] = ['error', '日付と対戦相手を入力してください'];
             } else {
+                // match_type / tournament_name カラムが無ければ自動追加（マイグレーション）
+                $cols = $pdo->query("SHOW COLUMNS FROM matches LIKE 'match_type'")->fetchAll();
+                if (empty($cols)) {
+                    $pdo->exec("ALTER TABLE matches ADD COLUMN match_type ENUM('friendly','official') NOT NULL DEFAULT 'friendly'");
+                    $pdo->exec("ALTER TABLE matches ADD COLUMN tournament_name VARCHAR(100) NOT NULL DEFAULT ''");
+                }
                 $pdo->prepare(
-                    'INSERT INTO matches (match_date, opponent, location) VALUES (?, ?, ?)'
-                )->execute([$date, $opponent, $location]);
-                $flash[] = ['success', "{$date} vs {$opponent} を登録しました"];
+                    'INSERT INTO matches (match_date, opponent, location, match_type, tournament_name) VALUES (?, ?, ?, ?, ?)'
+                )->execute([$date, $opponent, $location, $match_type, $tournament_name]);
+                $label = $match_type === 'official'
+                    ? "【公式】{$tournament_name} {$date} vs {$opponent}"
+                    : "【練習】{$date} vs {$opponent}";
+                $flash[] = ['success', "{$label} を登録しました"];
             }
         }
 
@@ -213,6 +224,26 @@ try {
                                placeholder="例: FC ライバル" required maxlength="100">
                     </div>
                     <div class="form-group">
+                        <label>試合種別 <span style="color:red">*</span></label>
+                        <div style="display:flex;gap:1.5rem;margin-top:.3rem;">
+                            <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;">
+                                <input type="radio" name="match_type" value="friendly" checked
+                                       onchange="toggleTournament(this.value)">
+                                練習試合
+                            </label>
+                            <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;">
+                                <input type="radio" name="match_type" value="official"
+                                       onchange="toggleTournament(this.value)">
+                                公式試合（大会）
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group" id="tournament-group" style="display:none;">
+                        <label for="tournament_name">大会名</label>
+                        <input type="text" id="tournament_name" name="tournament_name"
+                               placeholder="例: 県リーグ第3節" maxlength="100">
+                    </div>
+                    <div class="form-group">
                         <label for="location">場所（任意）</label>
                         <input type="text" id="location" name="location"
                                placeholder="例: 中央グラウンド" maxlength="100">
@@ -229,12 +260,14 @@ try {
                 <?php else: ?>
                     <table class="stats-table">
                         <thead>
-                            <tr><th>日付</th><th>対戦相手</th><th>場所</th></tr>
+                            <tr><th>日付</th><th>種別</th><th>大会名</th><th>対戦相手</th><th>場所</th></tr>
                         </thead>
                         <tbody>
                             <?php foreach ($matches as $m): ?>
                                 <tr>
                                     <td><?= htmlspecialchars($m['match_date']) ?></td>
+                                    <td><?= ($m['match_type'] ?? 'friendly') === 'official' ? '🏆公式' : '🤝練習' ?></td>
+                                    <td><?= htmlspecialchars($m['tournament_name'] ?? '') ?></td>
                                     <td><?= htmlspecialchars($m['opponent']) ?></td>
                                     <td><?= htmlspecialchars($m['location']) ?></td>
                                 </tr>
@@ -249,6 +282,20 @@ try {
     </main>
 
     <script>
+    // 大会名フィールドの表示切り替え
+    function toggleTournament(val) {
+        const grp = document.getElementById('tournament-group');
+        const inp = document.getElementById('tournament_name');
+        if (val === 'official') {
+            grp.style.display = '';
+            inp.required = true;
+        } else {
+            grp.style.display = 'none';
+            inp.required = false;
+            inp.value = '';
+        }
+    }
+
     // タブ切り替え
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', function () {

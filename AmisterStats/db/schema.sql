@@ -24,11 +24,13 @@ CREATE TABLE IF NOT EXISTS actions (
 
 -- 試合マスター
 CREATE TABLE IF NOT EXISTS matches (
-    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    match_date  DATE NOT NULL,
-    opponent    VARCHAR(100) NOT NULL DEFAULT '',
-    location    VARCHAR(100) NOT NULL DEFAULT '',
-    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    match_date      DATE NOT NULL,
+    opponent        VARCHAR(100) NOT NULL DEFAULT '',
+    location        VARCHAR(100) NOT NULL DEFAULT '',
+    match_type      ENUM('friendly','official') NOT NULL DEFAULT 'friendly',
+    tournament_name VARCHAR(100) NOT NULL DEFAULT '',
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ログ（選手×行為×試合）
