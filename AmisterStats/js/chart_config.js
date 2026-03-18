@@ -24,13 +24,25 @@
     /**
      * /api/get_stats.php のレスポンスからチャートを描画する。
      * @param {HTMLCanvasElement} canvas
-     * @param {Object} data  — { actions: [], players: [] }
+     * @param {Object} data  — { actions: [], players: [], of_actions: [], df_actions: [] }
      * @param {number[]} [visiblePlayerIds]  — 表示する選手IDリスト（省略時は全員）
+     * @param {string} [phase]  — 'offense' | 'defense' | undefined（全行為）
      */
-    function renderChart(canvas, data, visiblePlayerIds) {
+    function renderChart(canvas, data, visiblePlayerIds, phase) {
         if (!canvas || !data) return;
 
-        const labels  = data.actions.map(a => a.name);
+        let labels, dataKey;
+        if (phase === 'offense') {
+            labels  = data.of_actions || [];
+            dataKey = 'of_chart_data';
+        } else if (phase === 'defense') {
+            labels  = data.df_actions || [];
+            dataKey = 'df_chart_data';
+        } else {
+            labels  = data.actions.map(a => a.name);
+            dataKey = 'chart_data';
+        }
+
         const players = visiblePlayerIds
             ? data.players.filter(p => visiblePlayerIds.includes(p.id))
             : data.players;
@@ -39,7 +51,7 @@
             const color = PALETTE[idx % PALETTE.length];
             return {
                 label:           `#${player.number} ${player.name}`,
-                data:            player.chart_data,
+                data:            player[dataKey] || [],
                 borderColor:     color.border,
                 backgroundColor: color.bg,
                 borderWidth:     2,

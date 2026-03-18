@@ -11,15 +11,60 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
-      - name: Deploy via SFTP
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-lftp-sshpass
+
+      - name: Install dependencies
+        run: sudo apt-get install -y lftp sshpass
+
+      - name: Deploy changed files via SFTP
         env:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: |
-          sudo apt-get install -y lftp sshpass
           USER_CLEAN=$(echo -n "$FTP_USER" | tr -d '\n\r')
-          PASS_CLEAN=$(echo -n "$FTP_PASS" | tr -d '\n\r')
-          export SSHPASS="$PASS_CLEAN"
-          lftp -d \
-            -e "set sftp:connect-program 'sshpass -e ssh -a -x -o StrictHostKeyChecking=no'; open -u $USER_CLEAN sftp://sv10868.xserver.jp:10022; ls; mirror -R --delete AmisterStats/ /xs228925/xs228925.xsrv.jp/public_html/AmisterStats/; quit"
+          export SSHPASS=$(echo -n "$FTP_PASS" | tr -d '\n\r')
+          REMOTE_BASE="/xs228925/xs228925.xsrv.jp/public_html/AmisterStats"
+          SFTP_OPTS="set sftp:connect-program 'sshpass -e ssh -a -x -o StrictHostKeyChecking=no'; open -u $USER_CLEAN sftp://sv10868.xserver.jp:10022"
+
+          # Full mirror on manual trigger or first commit
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$(git rev-parse HEAD~1 2>/dev/null)" = "" ]; then
+            echo "Full deploy..."
+            lftp -e "$SFTP_OPTS; mirror -R --delete AmisterStats/ $REMOTE_BASE/; quit"
+            exit 0
+          fi
+
+          # Changed/added files
+          CHANGED=$(git diff --name-only --diff-filter=ACM HEAD~1 HEAD -- AmisterStats/)
+          # Deleted files
+          DELETED=$(git diff --name-only --diff-filter=D HEAD~1 HEAD -- AmisterStats/)
+
+          if [ -z "$CHANGED" ] && [ -z "$DELETED" ]; then
+            echo "No changes in AmisterStats/, skipping deploy."
+            exit 0
+          fi
+
+          # Build lftp commands
+          CMDS="$SFTP_OPTS"
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            REMOTE_PATH="$REMOTE_BASE/${f#AmisterStats/}"
+            REMOTE_DIR=$(dirname "$REMOTE_PATH")
+            CMDS="$CMDS; mkdir -p $REMOTE_DIR; put $f -o $REMOTE_PATH"
+          done <<< "$CHANGED"
+
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            REMOTE_PATH="$REMOTE_BASE/${f#AmisterStats/}"
+            CMDS="$CMDS; rm $REMOTE_PATH"
+          done <<< "$DELETED"
+
+          CMDS="$CMDS; quit"
+          echo "Deploying $(echo "$CHANGED" | grep -c .) changed, $(echo "$DELETED" | grep -c .) deleted files..."
+          lftp -e "$CMDS"

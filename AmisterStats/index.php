@@ -34,6 +34,10 @@ $title = 'AmisterStats';
                 <span class="icon">&#9881;&#65039;</span>
                 マスター登録
             </a>
+            <a class="home-btn" href="list.php" style="background:#37474f;">
+                <span class="icon">&#128203;</span>
+                一覧を見る
+            </a>
         </nav>
     </main>
 </body>

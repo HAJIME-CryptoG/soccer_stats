@@ -5,7 +5,7 @@ require_once __DIR__ . '/db/connect.php';
 try {
     $pdo = get_pdo();
     $matches = $pdo->query(
-        'SELECT id, match_date, opponent FROM matches ORDER BY match_date DESC, id DESC'
+        'SELECT id, match_date, opponent, match_type, tournament_name FROM matches ORDER BY match_date DESC, id DESC'
     )->fetchAll();
     // 選手リストを play_logs から動的取得
     $player_names = $pdo->query(
@@ -110,7 +110,11 @@ $filter_player_name = $_GET['player_name'] ?? '';
                         <?php foreach ($matches as $m): ?>
                             <option value="<?= $m['id'] ?>"
                                 <?= $filter_match_id == $m['id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($m['match_date']) ?> vs <?= htmlspecialchars($m['opponent']) ?>
+                                <?php
+                                    $type_label = ($m['match_type'] ?? 'friendly') === 'official' ? '🏆' : '🤝';
+                                    $tournament = !empty($m['tournament_name']) ? ' [' . htmlspecialchars($m['tournament_name']) . ']' : '';
+                                    echo $type_label . htmlspecialchars($m['match_date']) . $tournament . ' vs ' . htmlspecialchars($m['opponent']);
+                                ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -131,9 +135,9 @@ $filter_player_name = $_GET['player_name'] ?? '';
             </form>
         </div>
 
-        <!-- マトリックス表（チャートの前） -->
+        <!-- 集計表（チャートの前） -->
         <div class="card">
-            <div class="card-title">行為マトリックス</div>
+            <div class="card-title">集計表</div>
             <div id="matrix-wrapper">
                 <div class="spinner"></div>
             </div>
@@ -141,7 +145,18 @@ $filter_player_name = $_GET['player_name'] ?? '';
 
         <!-- スパイダーチャート -->
         <div class="card">
-            <div class="card-title">スパイダーチャート（行為カウント）</div>
+            <div class="card-title">スパイダーチャート</div>
+            <!-- OF/DF タブ -->
+            <div style="display:flex;gap:.5rem;margin-bottom:.8rem;">
+                <button id="chart-tab-of" class="matrix-tab active"
+                        onclick="switchChartPhase('offense')" type="button">
+                    🔵 オフェンス
+                </button>
+                <button id="chart-tab-df" class="matrix-tab"
+                        onclick="switchChartPhase('defense')" type="button">
+                    🔴 ディフェンス
+                </button>
+            </div>
             <div class="chart-wrapper">
                 <canvas id="spider-chart"></canvas>
             </div>
@@ -166,20 +181,43 @@ $filter_player_name = $_GET['player_name'] ?? '';
 
         const apiUrl = 'api/get_stats.php' + (params.toString() ? '?' + params.toString() : '');
 
+        let globalData = null;
+        let currentChartPhase = 'offense';
+
+        window.switchChartPhase = function(phase) {
+            currentChartPhase = phase;
+            document.getElementById('chart-tab-of').className =
+                'matrix-tab' + (phase === 'offense' ? ' active' : '');
+            document.getElementById('chart-tab-df').className =
+                'matrix-tab' + (phase === 'defense' ? ' df-active' : '');
+            if (globalData) drawChart(globalData, phase);
+        };
+
+        function drawChart(data, phase) {
+            const canvas   = document.getElementById('spider-chart');
+            const emptyMsg = document.getElementById('chart-empty');
+            // 記録が1件以上ある選手だけ判定（全員0の場合は「データなし」）
+            const hasData = data.players && data.players.some(p =>
+                phase === 'offense'
+                    ? (p.of_chart_data || []).some(v => v > 0)
+                    : (p.df_chart_data || []).some(v => v > 0)
+            );
+            if (hasData) {
+                canvas.style.display = '';
+                emptyMsg.style.display = 'none';
+                AmisterChart.renderChart(canvas, data, null, phase);
+            } else {
+                canvas.style.display = 'none';
+                emptyMsg.style.display = '';
+            }
+        }
+
         fetch(apiUrl)
             .then(r => r.json())
             .then(data => {
+                globalData = data;
                 renderMatrix(data);
-
-                const canvas   = document.getElementById('spider-chart');
-                const emptyMsg = document.getElementById('chart-empty');
-                if (data.players && data.players.length > 0) {
-                    AmisterChart.renderChart(canvas, data);
-                    emptyMsg.style.display = 'none';
-                } else {
-                    canvas.style.display = 'none';
-                    emptyMsg.style.display = '';
-                }
+                drawChart(data, currentChartPhase);
             })
             .catch(err => {
                 document.getElementById('matrix-wrapper').innerHTML =

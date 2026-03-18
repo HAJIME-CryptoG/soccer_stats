@@ -47,8 +47,22 @@ try {
     $stmt->execute($params);
     $rows = $stmt->fetchAll();
 
+    /* ---- 登録済み選手を players テーブルから取得（0件でも表示するため） ---- */
+    $registered = $pdo->query('SELECT name FROM players ORDER BY number ASC, name ASC')
+                      ->fetchAll(PDO::FETCH_COLUMN);
+
     /* ---- 選手別に整形 ---- */
     $players = [];
+    // まず登録済み選手を全員 0 で初期化
+    foreach ($registered as $name) {
+        $players[$name] = [
+            'name'    => $name,
+            'number'  => 0,
+            'offense' => [],
+            'defense' => [],
+        ];
+    }
+    // play_logs の集計データをマージ
     foreach ($rows as $row) {
         $name = $row['player_name'];
         if (!isset($players[$name])) {
@@ -63,17 +77,32 @@ try {
         $players[$name][$key][$row['action']] = (int)$row['cnt'];
     }
 
-    /* ---- スパイダーチャート用 chart_data（全行為の合計カウント） ---- */
+    /* ---- スパイダーチャート用データ（OF/DF別） ---- */
     $all_actions = array_merge($of_actions, $df_actions);
     foreach ($players as &$p) {
+        // 全行為合計（後方互換）
         $counts = [];
         foreach ($all_actions as $act) {
             $counts[] = ($p['offense'][$act] ?? 0) + ($p['defense'][$act] ?? 0);
         }
-        $p['chart_data']    = $counts;
-        $p['total_count']   = array_sum($counts);
-        $p['total_points']  = $p['total_count'];  // 後方互換
-        $p['actions']       = [];                 // 後方互換
+        $p['chart_data']   = $counts;
+        $p['total_count']  = array_sum($counts);
+        $p['total_points'] = $p['total_count'];
+        $p['actions']      = [];
+
+        // オフェンス専用チャートデータ
+        $of_counts = [];
+        foreach ($of_actions as $act) {
+            $of_counts[] = $p['offense'][$act] ?? 0;
+        }
+        $p['of_chart_data'] = $of_counts;
+
+        // ディフェンス専用チャートデータ
+        $df_counts = [];
+        foreach ($df_actions as $act) {
+            $df_counts[] = $p['defense'][$act] ?? 0;
+        }
+        $p['df_chart_data'] = $df_counts;
     }
     unset($p);
 

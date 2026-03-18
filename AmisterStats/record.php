@@ -16,7 +16,7 @@ try {
     }
 
     $matches = $pdo->query(
-        'SELECT id, match_date, opponent FROM matches ORDER BY match_date DESC, id DESC'
+        'SELECT id, match_date, opponent, match_type, tournament_name FROM matches ORDER BY match_date DESC, id DESC'
     )->fetchAll();
 } catch (Exception $e) {
     // DB 接続失敗は無視（試合リストなしで動作）
@@ -119,7 +119,11 @@ function esc(string $s): string {
         <option value="">試合を選択（任意）</option>
         <?php foreach ($matches as $m): ?>
         <option value="<?= esc((string)$m['id']) ?>">
-            <?= esc($m['match_date']) ?> vs <?= esc($m['opponent']) ?>
+            <?php
+                $type_label = ($m['match_type'] ?? 'friendly') === 'official' ? '🏆' : '🤝';
+                $tournament = !empty($m['tournament_name']) ? ' [' . $m['tournament_name'] . ']' : '';
+                echo $type_label . esc($m['match_date']) . $tournament . ' vs ' . esc($m['opponent']);
+            ?>
         </option>
         <?php endforeach; ?>
     </select>
