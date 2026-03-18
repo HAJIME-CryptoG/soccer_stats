@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $date            = $_POST['match_date']       ?? '';
             $opponent        = trim($_POST['opponent']    ?? '');
             $location        = trim($_POST['location']    ?? '');
-            $match_type      = $_POST['match_type'] === 'official' ? 'official' : 'friendly';
+            $match_type      = ($_POST['match_type'] ?? '') === 'official' ? 'official' : 'friendly';
             $tournament_name = $match_type === 'official' ? trim($_POST['tournament_name'] ?? '') : '';
 
             if (!$date || !$opponent) {
@@ -62,6 +62,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ? "【公式】{$tournament_name} {$date} vs {$opponent}"
                     : "【練習】{$date} vs {$opponent}";
                 $flash[] = ['success', "{$label} を登録しました"];
+            }
+
+        } elseif ($type === 'match_update') {
+            $id              = (int)($_POST['match_id']        ?? 0);
+            $date            = $_POST['match_date']            ?? '';
+            $opponent        = trim($_POST['opponent']         ?? '');
+            $location        = trim($_POST['location']         ?? '');
+            $match_type      = ($_POST['match_type'] ?? '') === 'official' ? 'official' : 'friendly';
+            $tournament_name = $match_type === 'official' ? trim($_POST['tournament_name'] ?? '') : '';
+
+            if (!$id || !$date || !$opponent) {
+                $flash[] = ['error', '日付と対戦相手を入力してください'];
+            } else {
+                $pdo->prepare(
+                    'UPDATE matches SET match_date=?, opponent=?, location=?, match_type=?, tournament_name=? WHERE id=?'
+                )->execute([$date, $opponent, $location, $match_type, $tournament_name, $id]);
+                $flash[] = ['success', "試合を更新しました"];
+            }
+
+        } elseif ($type === 'match_delete') {
+            $id = (int)($_POST['match_id'] ?? 0);
+            if ($id) {
+                $pdo->prepare('DELETE FROM matches WHERE id=?')->execute([$id]);
+                $flash[] = ['success', '試合を削除しました'];
             }
         }
 
@@ -260,7 +284,7 @@ try {
                 <?php else: ?>
                     <table class="stats-table">
                         <thead>
-                            <tr><th>日付</th><th>種別</th><th>大会名</th><th>対戦相手</th><th>場所</th></tr>
+                            <tr><th>日付</th><th>種別</th><th>大会名</th><th>対戦相手</th><th>場所</th><th></th></tr>
                         </thead>
                         <tbody>
                             <?php foreach ($matches as $m): ?>
@@ -270,10 +294,74 @@ try {
                                     <td><?= htmlspecialchars($m['tournament_name'] ?? '') ?></td>
                                     <td><?= htmlspecialchars($m['opponent']) ?></td>
                                     <td><?= htmlspecialchars($m['location']) ?></td>
+                                    <td style="white-space:nowrap;">
+                                        <button type="button"
+                                            class="btn btn-sm"
+                                            style="font-size:.75rem;padding:.2rem .5rem;background:#1565c0;color:#fff;border:none;border-radius:4px;cursor:pointer;"
+                                            onclick='openEditModal(<?= htmlspecialchars(json_encode($m), ENT_QUOTES) ?>)'>
+                                            編集
+                                        </button>
+                                        <form method="post" action="register.php#match" style="display:inline;"
+                                              onsubmit="return confirm('この試合を削除しますか？')">
+                                            <input type="hidden" name="type" value="match_delete">
+                                            <input type="hidden" name="match_id" value="<?= (int)$m['id'] ?>">
+                                            <button type="submit"
+                                                style="font-size:.75rem;padding:.2rem .5rem;background:#e53935;color:#fff;border:none;border-radius:4px;cursor:pointer;">
+                                                削除
+                                            </button>
+                                        </form>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+
+                    <!-- 編集モーダル -->
+                    <div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;">
+                        <div style="background:#fff;border-radius:12px;padding:1.2rem;width:min(92vw,440px);max-height:90vh;overflow-y:auto;">
+                            <div style="font-weight:700;font-size:1rem;margin-bottom:1rem;">試合を編集</div>
+                            <form method="post" action="register.php#match">
+                                <input type="hidden" name="type" value="match_update">
+                                <input type="hidden" name="match_id" id="edit-id">
+                                <div class="form-group">
+                                    <label>試合日 <span style="color:red">*</span></label>
+                                    <input type="date" name="match_date" id="edit-date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>対戦相手 <span style="color:red">*</span></label>
+                                    <input type="text" name="opponent" id="edit-opponent" maxlength="100" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>試合種別</label>
+                                    <div style="display:flex;gap:1.5rem;margin-top:.3rem;">
+                                        <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;">
+                                            <input type="radio" name="match_type" id="edit-type-friendly" value="friendly"
+                                                   onchange="toggleEditTournament(this.value)"> 練習試合
+                                        </label>
+                                        <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;">
+                                            <input type="radio" name="match_type" id="edit-type-official" value="official"
+                                                   onchange="toggleEditTournament(this.value)"> 公式試合（大会）
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group" id="edit-tournament-group">
+                                    <label>大会名</label>
+                                    <input type="text" name="tournament_name" id="edit-tournament" maxlength="100">
+                                </div>
+                                <div class="form-group">
+                                    <label>場所（任意）</label>
+                                    <input type="text" name="location" id="edit-location" maxlength="100">
+                                </div>
+                                <div style="display:flex;gap:.5rem;margin-top:.5rem;">
+                                    <button type="submit" class="btn btn-primary" style="flex:1;">更新する</button>
+                                    <button type="button" onclick="closeEditModal()"
+                                        style="flex:1;padding:.7rem;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;">
+                                        キャンセル
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -282,6 +370,32 @@ try {
     </main>
 
     <script>
+    // 編集モーダル
+    function openEditModal(m) {
+        document.getElementById('edit-id').value         = m.id;
+        document.getElementById('edit-date').value       = m.match_date;
+        document.getElementById('edit-opponent').value   = m.opponent;
+        document.getElementById('edit-location').value   = m.location || '';
+        document.getElementById('edit-tournament').value = m.tournament_name || '';
+        const isOfficial = m.match_type === 'official';
+        document.getElementById('edit-type-friendly').checked = !isOfficial;
+        document.getElementById('edit-type-official').checked = isOfficial;
+        document.getElementById('edit-tournament-group').style.display = isOfficial ? '' : 'none';
+        const modal = document.getElementById('edit-modal');
+        modal.style.display = 'flex';
+    }
+    function closeEditModal() {
+        document.getElementById('edit-modal').style.display = 'none';
+    }
+    function toggleEditTournament(val) {
+        document.getElementById('edit-tournament-group').style.display =
+            val === 'official' ? '' : 'none';
+    }
+    // モーダル外クリックで閉じる
+    document.getElementById('edit-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeEditModal();
+    });
+
     // 大会名フィールドの表示切り替え
     function toggleTournament(val) {
         const grp = document.getElementById('tournament-group');
