@@ -3,16 +3,7 @@
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../db/connect.php';
 
-/* ---- 行為名の固定リスト（record.php と一致） ---- */
-$of_actions = [
-    'パス成功', 'パス失敗', 'キーパス', 'アシスト', 'センタリング',
-    'シュート内', 'シュート外', 'ドリブル成功', 'ドリブル失敗', 'オフサイド',
-];
-$df_actions = [
-    'ボール奪取', 'インターセプト', 'シュートブロック', 'クリア(味方)',
-    'セービング', 'ブレイクアウェイ', 'パス成功/SK', 'カバーリング',
-    'スプリント20m', 'クリア(相手)', 'クリア(外)',
-];
+/* ---- 行為リストは play_logs から動的取得 ---- */
 
 try {
     $pdo = get_pdo();
@@ -35,6 +26,14 @@ try {
 
     $whereSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
+    /* ---- 行為リストを play_logs から動的取得（全期間・全フィルター横断で軸を固定） ---- */
+    $of_actions = $pdo->query(
+        "SELECT DISTINCT action FROM play_logs WHERE phase='offense' ORDER BY action"
+    )->fetchAll(PDO::FETCH_COLUMN);
+    $df_actions = $pdo->query(
+        "SELECT DISTINCT action FROM play_logs WHERE phase='defense' ORDER BY action"
+    )->fetchAll(PDO::FETCH_COLUMN);
+
     /* ---- play_logs から集計 ---- */
     $sql = "
         SELECT player_name, action, phase, COUNT(*) AS cnt
@@ -48,16 +47,16 @@ try {
     $rows = $stmt->fetchAll();
 
     /* ---- 登録済み選手を players テーブルから取得（0件でも表示するため） ---- */
-    $registered = $pdo->query('SELECT name FROM players ORDER BY number ASC, name ASC')
-                      ->fetchAll(PDO::FETCH_COLUMN);
+    $registered = $pdo->query('SELECT name, number FROM players ORDER BY number ASC, name ASC')
+                      ->fetchAll(PDO::FETCH_ASSOC);
 
     /* ---- 選手別に整形 ---- */
     $players = [];
     // まず登録済み選手を全員 0 で初期化
-    foreach ($registered as $name) {
-        $players[$name] = [
-            'name'    => $name,
-            'number'  => 0,
+    foreach ($registered as $r) {
+        $players[$r['name']] = [
+            'name'    => $r['name'],
+            'number'  => (int)$r['number'],
             'offense' => [],
             'defense' => [],
         ];
