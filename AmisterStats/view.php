@@ -152,32 +152,24 @@ $filter_player_name = $_GET['player_name'] ?? '';
             </div>
         </div>
 
-        <!-- スパイダーチャート -->
+        <!-- スパイダーチャート OF -->
         <div class="card">
-            <div class="card-title">スパイダーチャート</div>
-            <!-- OF/DF タブ -->
-            <div style="display:flex;gap:.5rem;margin-bottom:.8rem;">
-                <button id="chart-tab-of" class="matrix-tab active"
-                        onclick="switchChartPhase('offense')" type="button">
-                    🔵 オフェンス
-                </button>
-                <button id="chart-tab-df" class="matrix-tab"
-                        onclick="switchChartPhase('defense')" type="button">
-                    🔴 ディフェンス
-                </button>
-            </div>
-            <!-- OFチャート -->
+            <div class="card-title">🔵 オフェンス チャート</div>
             <div id="chart-of-wrapper" class="chart-wrapper">
                 <canvas id="spider-chart-of"></canvas>
             </div>
-            <p id="chart-of-empty" class="text-muted text-center mt-2" style="font-size:.85rem;display:none;">
+            <p id="chart-of-empty" class="text-muted text-center" style="font-size:.85rem;display:none;">
                 表示するデータがありません
             </p>
-            <!-- DFチャート（初期非表示） -->
-            <div id="chart-df-wrapper" class="chart-wrapper" style="display:none;">
+        </div>
+
+        <!-- スパイダーチャート DF -->
+        <div class="card">
+            <div class="card-title">🔴 ディフェンス チャート</div>
+            <div id="chart-df-wrapper" class="chart-wrapper">
                 <canvas id="spider-chart-df"></canvas>
             </div>
-            <p id="chart-df-empty" class="text-muted text-center mt-2" style="font-size:.85rem;display:none;">
+            <p id="chart-df-empty" class="text-muted text-center" style="font-size:.85rem;display:none;">
                 表示するデータがありません
             </p>
         </div>
@@ -198,35 +190,12 @@ $filter_player_name = $_GET['player_name'] ?? '';
 
         const apiUrl = 'api/get_stats.php' + (params.toString() ? '?' + params.toString() : '');
 
-        let globalData = null;
-
-        window.switchChartPhase = function(phase) {
-            document.getElementById('chart-tab-of').className =
-                'matrix-tab' + (phase === 'offense' ? ' active' : '');
-            document.getElementById('chart-tab-df').className =
-                'matrix-tab' + (phase === 'defense' ? ' df-active' : '');
-            // OFとDFのcanvasラッパーを切り替える
-            document.getElementById('chart-of-wrapper').style.display = phase === 'offense' ? '' : 'none';
-            document.getElementById('chart-of-empty').style.display =
-                (phase === 'offense' && globalData && !hasChartData(globalData, 'offense')) ? '' : 'none';
-            document.getElementById('chart-df-wrapper').style.display = phase === 'defense' ? '' : 'none';
-            document.getElementById('chart-df-empty').style.display =
-                (phase === 'defense' && globalData && !hasChartData(globalData, 'defense')) ? '' : 'none';
-        };
-
-        function hasChartData(data, phase) {
-            const actions = phase === 'offense'
-                ? (data.of_actions || [])
-                : (data.df_actions || []);
-            // アクション名が1件以上あり、選手が1人以上いれば表示する（値が全0でも表示）
-            return actions.length > 0 && data.players && data.players.length > 0;
-        }
-
         function drawBothCharts(data) {
-            // オフェンスチャート
-            const ofCanvas  = document.getElementById('spider-chart-of');
-            const ofEmpty   = document.getElementById('chart-of-empty');
-            if (hasChartData(data, 'offense')) {
+            // ---- オフェンスチャート ----
+            const ofCanvas = document.getElementById('spider-chart-of');
+            const ofEmpty  = document.getElementById('chart-of-empty');
+            const ofHas    = (data.of_actions || []).length > 0 && (data.players || []).length > 0;
+            if (ofHas) {
                 ofCanvas.style.display = '';
                 ofEmpty.style.display  = 'none';
                 AmisterChart.renderChart(ofCanvas, data, null, 'offense');
@@ -234,10 +203,11 @@ $filter_player_name = $_GET['player_name'] ?? '';
                 ofCanvas.style.display = 'none';
                 ofEmpty.style.display  = '';
             }
-            // ディフェンスチャート
-            const dfCanvas  = document.getElementById('spider-chart-df');
-            const dfEmpty   = document.getElementById('chart-df-empty');
-            if (hasChartData(data, 'defense')) {
+            // ---- ディフェンスチャート ----
+            const dfCanvas = document.getElementById('spider-chart-df');
+            const dfEmpty  = document.getElementById('chart-df-empty');
+            const dfHas    = (data.df_actions || []).length > 0 && (data.players || []).length > 0;
+            if (dfHas) {
                 dfCanvas.style.display = '';
                 dfEmpty.style.display  = 'none';
                 AmisterChart.renderChart(dfCanvas, data, null, 'defense');
@@ -250,7 +220,6 @@ $filter_player_name = $_GET['player_name'] ?? '';
         fetch(apiUrl)
             .then(r => r.json())
             .then(data => {
-                globalData = data;
                 renderMatrix(data);
                 drawBothCharts(data);
             })
