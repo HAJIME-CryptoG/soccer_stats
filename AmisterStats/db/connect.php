@@ -69,13 +69,12 @@ function _run_migrations(PDO $pdo): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
 
-    // 3a. matches に match_type カラムが無ければ追加（既存DB対応）
-    $cols = $pdo->query("SHOW COLUMNS FROM matches LIKE 'match_type'")->fetchAll();
-    if (empty($cols)) {
-        $pdo->exec("ALTER TABLE matches
-            ADD COLUMN match_type      ENUM('friendly','official') NOT NULL DEFAULT 'friendly',
-            ADD COLUMN tournament_name VARCHAR(100) NOT NULL DEFAULT ''
-        ");
+    // 3a. matches に match_type カラムが無ければ追加（既存DB対応・個別チェック）
+    if (empty($pdo->query("SHOW COLUMNS FROM matches LIKE 'match_type'")->fetchAll())) {
+        $pdo->exec("ALTER TABLE matches ADD COLUMN match_type ENUM('friendly','official') NOT NULL DEFAULT 'friendly'");
+    }
+    if (empty($pdo->query("SHOW COLUMNS FROM matches LIKE 'tournament_name'")->fetchAll())) {
+        $pdo->exec("ALTER TABLE matches ADD COLUMN tournament_name VARCHAR(100) NOT NULL DEFAULT ''");
     }
 
     // 4. play_logs テーブル（match_id 含む）
