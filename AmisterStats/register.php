@@ -127,6 +127,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare('DELETE FROM actions WHERE id=?')->execute([$id]);
                 $flash[] = ['success', 'プレーを削除しました'];
             }
+
+        } elseif ($type === 'reset_logs') {
+            $confirm = trim($_POST['reset_confirm'] ?? '');
+            if ($confirm !== 'リセット') {
+                $flash[] = ['error', '確認ワードが一致しません'];
+            } else {
+                $count = (int)$pdo->query('SELECT COUNT(*) FROM play_logs')->fetchColumn();
+                $pdo->exec('DELETE FROM play_logs');
+                $flash[] = ['success', "プレーデータを全件削除しました（{$count}件）。選手・試合・プレー設定はそのまま残っています。"];
+            }
         }
 
     } catch (Exception $e) {
@@ -497,6 +507,42 @@ try {
             </div>
         </div>
 
+        <!-- ================================================================
+             危険ゾーン：プレーデータ全リセット
+             ================================================================ -->
+        <div class="card" style="border:2px solid #e53935;margin-top:1.5rem;">
+            <div class="card-title" style="color:#e53935;">⚠️ プレーデータのリセット</div>
+            <p style="font-size:.85rem;color:#555;margin:0 0 .8rem;">
+                <strong>play_logs テーブルを全件削除します。</strong><br>
+                選手・試合・プレー設定のデータは削除されません。<br>
+                テスト入力を一括削除してから本番配布する用途向けです。
+            </p>
+            <?php
+                try {
+                    $log_count = (int)get_pdo()->query('SELECT COUNT(*) FROM play_logs')->fetchColumn();
+                } catch (Exception $e) { $log_count = '?'; }
+            ?>
+            <p style="font-size:.9rem;font-weight:700;margin:0 0 .8rem;">
+                現在の記録数：<span style="color:#e53935;"><?= $log_count ?>件</span>
+            </p>
+            <form method="post" action="register.php" id="resetForm"
+                  onsubmit="return confirmReset()">
+                <input type="hidden" name="type" value="reset_logs">
+                <div class="form-group">
+                    <label for="reset_confirm">
+                        確認のため <strong>「リセット」</strong> と入力してください
+                    </label>
+                    <input type="text" id="reset_confirm" name="reset_confirm"
+                           placeholder="リセット" autocomplete="off"
+                           style="border-color:#e53935;">
+                </div>
+                <button type="submit" class="btn btn-block"
+                        style="background:#e53935;color:#fff;font-weight:700;">
+                    🗑️ プレーデータを全件削除する
+                </button>
+            </form>
+        </div>
+
         <?php endif; ?>
     </main>
 
@@ -594,6 +640,16 @@ try {
             const btn = e.target.closest('.tab-btn');
             if (btn && btn.dataset.tab) switchTab(btn.dataset.tab);
         });
+    }
+
+    // プレーデータリセット確認
+    function confirmReset() {
+        const val = document.getElementById('reset_confirm').value;
+        if (val !== 'リセット') {
+            alert('「リセット」と正確に入力してください');
+            return false;
+        }
+        return confirm('本当にプレーデータを全件削除しますか？\nこの操作は取り消せません。');
     }
 
     // URLハッシュに応じてタブを自動切り替え
