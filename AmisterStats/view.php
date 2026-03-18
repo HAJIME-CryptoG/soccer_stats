@@ -178,7 +178,7 @@ $filter_player_name = $_GET['player_name'] ?? '';
     </main>
 
     <div id="toast"></div>
-    <script src="js/chart_config.js"></script>
+    <script src="js/chart_config.js?v=<?= filemtime(__DIR__ . '/js/chart_config.js') ?>"></script>
     <script>
     (function () {
         const matchId    = <?= json_encode($filter_match_id    ?: null) ?>;
