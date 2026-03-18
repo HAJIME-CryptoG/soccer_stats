@@ -108,6 +108,9 @@ function esc(string $s): string {
     </div>
 
     <span class="clock" id="clock" aria-live="off"></span>
+    <button class="hamburger-btn" onclick="openNav()" aria-label="メニューを開く" style="margin-left:0;">
+        <span></span><span></span><span></span>
+    </button>
 </header>
 
 <!-- ================================================================
@@ -453,5 +456,6 @@ function showToast(message) {
 
 })(); // IIFE end
 </script>
+<?php $nav_current = 'record'; require __DIR__ . '/partials/nav_drawer.php'; ?>
 </body>
 </html>

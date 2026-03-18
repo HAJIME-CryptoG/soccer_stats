@@ -159,6 +159,9 @@ try {
     <header class="app-header" style="background:#6a1b9a;">
         <a class="back-btn" href="index.php" aria-label="ホームへ戻る">&#8592;</a>
         <h1>&#9881;&#65039; マスター登録</h1>
+        <button class="hamburger-btn" onclick="openNav()" aria-label="メニューを開く">
+            <span></span><span></span><span></span>
+        </button>
     </header>
 
     <main class="container">
@@ -601,5 +604,6 @@ try {
         }
     })();
     </script>
+    <?php $nav_current = 'register'; require __DIR__ . '/partials/nav_drawer.php'; ?>
 </body>
 </html>

@@ -19,7 +19,8 @@
         { border: 'rgba(255,64,129,1)',  bg: 'rgba(255,64,129,.15)'  },
     ];
 
-    let chart = null;   // Chart.js インスタンス（再描画時に destroy する）
+    // canvas 要素ごとに Chart インスタンスを管理（複数チャート対応）
+    const _charts = new WeakMap();
 
     /**
      * /api/get_stats.php のレスポンスからチャートを描画する。
@@ -60,12 +61,15 @@
             };
         });
 
-        if (chart) {
-            chart.destroy();
-            chart = null;
+        // 既存チャートがあれば破棄してキャンバスをクリア
+        if (_charts.has(canvas)) {
+            _charts.get(canvas).destroy();
+            _charts.delete(canvas);
         }
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        chart = new Chart(canvas, {
+        const chart = new Chart(canvas, {
             type: 'radar',
             data: { labels, datasets },
             options: {
@@ -117,12 +121,15 @@
                 },
             },
         });
+
+        _charts.set(canvas, chart);
     }
 
     /**
      * 表示する選手を切り替える（チェックボックス連動など）
      */
-    function updateVisibility(visiblePlayerIds) {
+    function updateVisibility(canvas, visiblePlayerIds) {
+        const chart = _charts.get(canvas);
         if (!chart) return;
         const allDatasets = chart.data.datasets;
         allDatasets.forEach((ds, idx) => {

@@ -98,6 +98,9 @@ $filter_player_name = $_GET['player_name'] ?? '';
     <header class="app-header" style="background:#1565c0;">
         <a class="back-btn" href="index.php" aria-label="ホームへ戻る">&#8592;</a>
         <h1>&#128202; 集計を見る</h1>
+        <button class="hamburger-btn" onclick="openNav()" aria-label="メニューを開く">
+            <span></span><span></span><span></span>
+        </button>
     </header>
 
     <main class="container">
@@ -163,10 +166,18 @@ $filter_player_name = $_GET['player_name'] ?? '';
                     🔴 ディフェンス
                 </button>
             </div>
-            <div class="chart-wrapper">
-                <canvas id="spider-chart"></canvas>
+            <!-- OFチャート -->
+            <div id="chart-of-wrapper" class="chart-wrapper">
+                <canvas id="spider-chart-of"></canvas>
             </div>
-            <p id="chart-empty" class="text-muted text-center mt-2" style="font-size:.85rem;display:none;">
+            <p id="chart-of-empty" class="text-muted text-center mt-2" style="font-size:.85rem;display:none;">
+                表示するデータがありません
+            </p>
+            <!-- DFチャート（初期非表示） -->
+            <div id="chart-df-wrapper" class="chart-wrapper" style="display:none;">
+                <canvas id="spider-chart-df"></canvas>
+            </div>
+            <p id="chart-df-empty" class="text-muted text-center mt-2" style="font-size:.85rem;display:none;">
                 表示するデータがありません
             </p>
         </div>
@@ -188,33 +199,51 @@ $filter_player_name = $_GET['player_name'] ?? '';
         const apiUrl = 'api/get_stats.php' + (params.toString() ? '?' + params.toString() : '');
 
         let globalData = null;
-        let currentChartPhase = 'offense';
 
         window.switchChartPhase = function(phase) {
-            currentChartPhase = phase;
             document.getElementById('chart-tab-of').className =
                 'matrix-tab' + (phase === 'offense' ? ' active' : '');
             document.getElementById('chart-tab-df').className =
                 'matrix-tab' + (phase === 'defense' ? ' df-active' : '');
-            if (globalData) drawChart(globalData, phase);
+            // OFとDFのcanvasラッパーを切り替える
+            document.getElementById('chart-of-wrapper').style.display = phase === 'offense' ? '' : 'none';
+            document.getElementById('chart-of-empty').style.display =
+                (phase === 'offense' && globalData && !hasChartData(globalData, 'offense')) ? '' : 'none';
+            document.getElementById('chart-df-wrapper').style.display = phase === 'defense' ? '' : 'none';
+            document.getElementById('chart-df-empty').style.display =
+                (phase === 'defense' && globalData && !hasChartData(globalData, 'defense')) ? '' : 'none';
         };
 
-        function drawChart(data, phase) {
-            const canvas   = document.getElementById('spider-chart');
-            const emptyMsg = document.getElementById('chart-empty');
-            // 記録が1件以上ある選手だけ判定（全員0の場合は「データなし」）
-            const hasData = data.players && data.players.some(p =>
+        function hasChartData(data, phase) {
+            return data.players && data.players.some(p =>
                 phase === 'offense'
                     ? (p.of_chart_data || []).some(v => v > 0)
                     : (p.df_chart_data || []).some(v => v > 0)
             );
-            if (hasData) {
-                canvas.style.display = '';
-                emptyMsg.style.display = 'none';
-                AmisterChart.renderChart(canvas, data, null, phase);
+        }
+
+        function drawBothCharts(data) {
+            // オフェンスチャート
+            const ofCanvas  = document.getElementById('spider-chart-of');
+            const ofEmpty   = document.getElementById('chart-of-empty');
+            if (hasChartData(data, 'offense')) {
+                ofCanvas.style.display = '';
+                ofEmpty.style.display  = 'none';
+                AmisterChart.renderChart(ofCanvas, data, null, 'offense');
             } else {
-                canvas.style.display = 'none';
-                emptyMsg.style.display = '';
+                ofCanvas.style.display = 'none';
+                ofEmpty.style.display  = '';
+            }
+            // ディフェンスチャート
+            const dfCanvas  = document.getElementById('spider-chart-df');
+            const dfEmpty   = document.getElementById('chart-df-empty');
+            if (hasChartData(data, 'defense')) {
+                dfCanvas.style.display = '';
+                dfEmpty.style.display  = 'none';
+                AmisterChart.renderChart(dfCanvas, data, null, 'defense');
+            } else {
+                dfCanvas.style.display = 'none';
+                dfEmpty.style.display  = '';
             }
         }
 
@@ -223,7 +252,7 @@ $filter_player_name = $_GET['player_name'] ?? '';
             .then(data => {
                 globalData = data;
                 renderMatrix(data);
-                drawChart(data, currentChartPhase);
+                drawBothCharts(data);
             })
             .catch(err => {
                 document.getElementById('matrix-wrapper').innerHTML =
@@ -292,5 +321,6 @@ $filter_player_name = $_GET['player_name'] ?? '';
         }
     })();
     </script>
+    <?php $nav_current = 'view'; require __DIR__ . '/partials/nav_drawer.php'; ?>
 </body>
 </html>
