@@ -27,12 +27,58 @@ function get_pdo(): PDO {
 
 /**
  * 自動マイグレーション:
- *   - play_logs テーブルが無ければ作成
- *   - match_id カラムが無ければ追加
+ *   - 全テーブルを CREATE TABLE IF NOT EXISTS で作成
+ *   - matches テーブルに match_type / tournament_name カラムを追加
+ *   - play_logs テーブルに match_id カラムを追加
  *   - players テーブルが空なら初期12名を挿入
  */
 function _run_migrations(PDO $pdo): void {
-    // 1. play_logs テーブルを作成（存在しない場合）
+
+    // 1. players テーブル
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS players (
+            id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            name       VARCHAR(100) NOT NULL,
+            number     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+            team       VARCHAR(100) NOT NULL DEFAULT '',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+
+    // 2. actions テーブル
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS actions (
+            id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            name        VARCHAR(100) NOT NULL,
+            point_value TINYINT NOT NULL DEFAULT 1,
+            category    ENUM('positive','negative') NOT NULL DEFAULT 'positive',
+            created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+
+    // 3. matches テーブル（match_type / tournament_name 含む）
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS matches (
+            id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            match_date      DATE NOT NULL,
+            opponent        VARCHAR(100) NOT NULL DEFAULT '',
+            location        VARCHAR(100) NOT NULL DEFAULT '',
+            match_type      ENUM('friendly','official') NOT NULL DEFAULT 'friendly',
+            tournament_name VARCHAR(100) NOT NULL DEFAULT '',
+            created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+
+    // 3a. matches に match_type カラムが無ければ追加（既存DB対応）
+    $cols = $pdo->query("SHOW COLUMNS FROM matches LIKE 'match_type'")->fetchAll();
+    if (empty($cols)) {
+        $pdo->exec("ALTER TABLE matches
+            ADD COLUMN match_type      ENUM('friendly','official') NOT NULL DEFAULT 'friendly',
+            ADD COLUMN tournament_name VARCHAR(100) NOT NULL DEFAULT ''
+        ");
+    }
+
+    // 4. play_logs テーブル（match_id 含む）
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS play_logs (
             id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -48,13 +94,13 @@ function _run_migrations(PDO $pdo): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
 
-    // 2. match_id カラムが無ければ追加
+    // 4a. play_logs に match_id カラムが無ければ追加（既存DB対応）
     $cols = $pdo->query("SHOW COLUMNS FROM play_logs LIKE 'match_id'")->fetchAll();
     if (empty($cols)) {
         $pdo->exec("ALTER TABLE play_logs ADD COLUMN match_id INT UNSIGNED NULL DEFAULT NULL");
     }
 
-    // 3. players テーブルが空なら初期12名を挿入
+    // 5. players テーブルが空なら初期12名を挿入
     $count = (int)$pdo->query('SELECT COUNT(*) FROM players')->fetchColumn();
     if ($count === 0) {
         $initial = [
@@ -71,9 +117,7 @@ function _run_migrations(PDO $pdo): void {
             ['ゆうし',   0],
             ['りょう',   0],
         ];
-        $stmt = $pdo->prepare(
-            "INSERT INTO players (name, number, team) VALUES (?, ?, '')"
-        );
+        $stmt = $pdo->prepare("INSERT INTO players (name, number, team) VALUES (?, ?, '')");
         foreach ($initial as [$name, $number]) {
             $stmt->execute([$name, $number]);
         }
