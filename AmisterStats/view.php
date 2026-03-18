@@ -215,11 +215,11 @@ $filter_player_name = $_GET['player_name'] ?? '';
         };
 
         function hasChartData(data, phase) {
-            return data.players && data.players.some(p =>
-                phase === 'offense'
-                    ? (p.of_chart_data || []).some(v => v > 0)
-                    : (p.df_chart_data || []).some(v => v > 0)
-            );
+            const actions = phase === 'offense'
+                ? (data.of_actions || [])
+                : (data.df_actions || []);
+            // アクション名が1件以上あり、選手が1人以上いれば表示する（値が全0でも表示）
+            return actions.length > 0 && data.players && data.players.length > 0;
         }
 
         function drawBothCharts(data) {

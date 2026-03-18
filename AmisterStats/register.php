@@ -31,12 +31,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $cat    = $points >= 0 ? 'positive' : 'negative';
 
             if ($name === '') {
-                $flash[] = ['error', '行為名を入力してください'];
+                $flash[] = ['error', 'プレー名を入力してください'];
             } else {
                 $pdo->prepare(
                     'INSERT INTO actions (name, point_value, category) VALUES (?, ?, ?)'
                 )->execute([$name, $points, $cat]);
-                $flash[] = ['success', "行為「{$name}」({$points}pt) を登録しました"];
+                $flash[] = ['success', "プレー「{$name}」({$points}pt) を登録しました"];
             }
 
         } elseif ($type === 'match') {
@@ -114,18 +114,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $points = (int)($_POST['action_points'] ?? 0);
             $cat    = $points >= 0 ? 'positive' : 'negative';
             if (!$id || $name === '') {
-                $flash[] = ['error', '行為名を入力してください'];
+                $flash[] = ['error', 'プレー名を入力してください'];
             } else {
                 $pdo->prepare('UPDATE actions SET name=?, point_value=?, category=? WHERE id=?')
                     ->execute([$name, $points, $cat, $id]);
-                $flash[] = ['success', "行為「{$name}」を更新しました"];
+                $flash[] = ['success', "プレー「{$name}」を更新しました"];
             }
 
         } elseif ($type === 'action_delete') {
             $id = (int)($_POST['action_id'] ?? 0);
             if ($id) {
                 $pdo->prepare('DELETE FROM actions WHERE id=?')->execute([$id]);
-                $flash[] = ['success', '行為を削除しました'];
+                $flash[] = ['success', 'プレーを削除しました'];
             }
         }
 
@@ -177,7 +177,7 @@ try {
         <!-- タブ切り替え -->
         <div class="tab-bar">
             <button class="tab-btn active" data-tab="player" type="button">選手</button>
-            <button class="tab-btn" data-tab="action" type="button">行為</button>
+            <button class="tab-btn" data-tab="action" type="button">プレー</button>
             <button class="tab-btn" data-tab="match" type="button">試合</button>
         </div>
 
@@ -276,14 +276,14 @@ try {
             </div>
         </div>
 
-        <!-- === 行為タブ === -->
+        <!-- === プレータブ === -->
         <div class="tab-content" id="tab-action">
             <div class="card" id="action">
-                <div class="card-title">行為を登録</div>
+                <div class="card-title">プレーを登録</div>
                 <form method="post" action="register.php#action">
                     <input type="hidden" name="type" value="action">
                     <div class="form-group">
-                        <label for="action_name">行為名 <span style="color:red">*</span></label>
+                        <label for="action_name">プレー名 <span style="color:red">*</span></label>
                         <input type="text" id="action_name" name="action_name"
                                placeholder="例: パス成功" required maxlength="100">
                     </div>
@@ -296,15 +296,15 @@ try {
                 </form>
             </div>
 
-            <!-- 行為一覧 -->
+            <!-- プレー一覧 -->
             <div class="card">
-                <div class="card-title">登録済み行為 (<?= count($actions) ?>件)</div>
+                <div class="card-title">登録済みプレー (<?= count($actions) ?>件)</div>
                 <?php if (empty($actions)): ?>
                     <p class="text-muted" style="font-size:.85rem;">まだ登録されていません</p>
                 <?php else: ?>
                     <table class="stats-table">
                         <thead>
-                            <tr><th>行為名</th><th>ポイント</th><th>カテゴリ</th><th></th></tr>
+                            <tr><th>プレー名</th><th>ポイント</th><th>カテゴリ</th><th></th></tr>
                         </thead>
                         <tbody>
                             <?php foreach ($actions as $a): ?>
@@ -319,7 +319,7 @@ try {
                                             編集
                                         </button>
                                         <form method="post" action="register.php#action" style="display:inline;"
-                                              onsubmit="return confirm('この行為を削除しますか？')">
+                                              onsubmit="return confirm('このプレーを削除しますか？')">
                                             <input type="hidden" name="type" value="action_delete">
                                             <input type="hidden" name="action_id" value="<?= (int)$a['id'] ?>">
                                             <button type="submit"
@@ -333,15 +333,15 @@ try {
                         </tbody>
                     </table>
 
-                    <!-- 行為編集モーダル -->
+                    <!-- プレー編集モーダル -->
                     <div id="action-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;">
                         <div style="background:#fff;border-radius:12px;padding:1.2rem;width:min(92vw,400px);">
-                            <div style="font-weight:700;font-size:1rem;margin-bottom:1rem;">行為を編集</div>
+                            <div style="font-weight:700;font-size:1rem;margin-bottom:1rem;">プレーを編集</div>
                             <form method="post" action="register.php#action">
                                 <input type="hidden" name="type" value="action_update">
                                 <input type="hidden" name="action_id" id="edit-action-id">
                                 <div class="form-group">
-                                    <label>行為名 <span style="color:red">*</span></label>
+                                    <label>プレー名 <span style="color:red">*</span></label>
                                     <input type="text" name="action_name" id="edit-action-name" maxlength="100" required>
                                 </div>
                                 <div class="form-group">

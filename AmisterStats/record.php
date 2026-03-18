@@ -152,8 +152,8 @@ function esc(string $s): string {
         </div>
     </section>
 
-    <!-- 右パネル：行為ボタン（スクロール可） -->
-    <section class="action-panel" id="actionPanel" aria-label="行為選択">
+    <!-- 右パネル：プレーボタン（スクロール可） -->
+    <section class="action-panel" id="actionPanel" aria-label="プレー選択">
 
         <!-- オフェンス行為 -->
         <div id="ofActions">
@@ -229,7 +229,7 @@ function esc(string $s): string {
      ================================================================ -->
 <footer class="record-footer">
     <div class="status-bar" id="statusBar" aria-live="polite">
-        選手を選択 → 行為をタップ → 登録
+        選手を選択 → プレーをタップ → 登録
     </div>
     <div class="footer-buttons">
         <button class="register-btn" id="registerBtn"
@@ -351,10 +351,10 @@ function clearActionSelections() {
 function updateStatus() {
     const el = document.getElementById('statusBar');
     if (!state.selectedPlayer) {
-        el.textContent = '選手を選択 → 行為をタップ → 登録';
+        el.textContent = '選手を選択 → プレーをタップ → 登録';
         el.className = 'status-bar';
     } else if (state.selectedActions.length === 0) {
-        el.textContent = `👤 ${state.selectedPlayer} — 行為を選択してください`;
+        el.textContent = `👤 ${state.selectedPlayer} — プレーを選択してください`;
         el.className = 'status-bar status-player';
     } else {
         el.textContent =

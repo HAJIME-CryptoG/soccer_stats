@@ -4,6 +4,21 @@
  * 使い方: <?php $nav_current = 'record'; require __DIR__ . '/../partials/nav_drawer.php'; ?>
  * $nav_current: 'home' | 'record' | 'view' | 'register' | 'list'
  */
+?>
+<style>
+/* ナビゲーションドロワー — 外部CSSが未ロードの場合も確実に動作させる保険スタイル */
+.nav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;}
+.nav-overlay.open{opacity:1;pointer-events:auto;}
+.nav-drawer{position:fixed;top:0;right:0;width:240px;height:100%;background:#fff;z-index:201;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:-4px 0 20px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;}
+.nav-drawer.open{transform:translateX(0);}
+.nav-drawer-header{background:#1a7f3c;color:#fff;padding:.9rem 1rem;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-shrink:0;}
+.nav-drawer-close{background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;padding:.2rem .4rem;border-radius:4px;line-height:1;}
+.nav-drawer nav{flex:1;padding:.4rem 0;overflow-y:auto;}
+.nav-drawer-item{display:flex;align-items:center;gap:.75rem;padding:.85rem 1.2rem;text-decoration:none;color:#212121;font-size:.95rem;font-weight:600;border-left:3px solid transparent;}
+.nav-drawer-item.current{background:rgba(26,127,60,.08);color:#1a7f3c;border-left-color:#1a7f3c;}
+.nav-drawer-icon{font-size:1.15rem;width:1.5rem;text-align:center;}
+</style>
+<?php
 $nav_current = $nav_current ?? '';
 
 $nav_items = [
