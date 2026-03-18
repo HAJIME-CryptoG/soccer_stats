@@ -69,12 +69,17 @@ function _run_migrations(PDO $pdo): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
 
-    // 3a. matches に match_type カラムが無ければ追加（既存DB対応・個別チェック）
-    if (empty($pdo->query("SHOW COLUMNS FROM matches LIKE 'match_type'")->fetchAll())) {
-        $pdo->exec("ALTER TABLE matches ADD COLUMN match_type ENUM('friendly','official') NOT NULL DEFAULT 'friendly'");
-    }
-    if (empty($pdo->query("SHOW COLUMNS FROM matches LIKE 'tournament_name'")->fetchAll())) {
-        $pdo->exec("ALTER TABLE matches ADD COLUMN tournament_name VARCHAR(100) NOT NULL DEFAULT ''");
+    // 3a. matches に match_type / tournament_name カラムが無ければ追加
+    //     try-catch で「既に存在する(1060)」エラーを無視する
+    foreach ([
+        "ALTER TABLE matches ADD COLUMN match_type      ENUM('friendly','official') NOT NULL DEFAULT 'friendly'",
+        "ALTER TABLE matches ADD COLUMN tournament_name VARCHAR(100) NOT NULL DEFAULT ''",
+    ] as $sql) {
+        try {
+            $pdo->exec($sql);
+        } catch (\PDOException $e) {
+            if ($e->errorInfo[1] !== 1060) throw $e; // 1060 = Duplicate column
+        }
     }
 
     // 4. play_logs テーブル（match_id 含む）

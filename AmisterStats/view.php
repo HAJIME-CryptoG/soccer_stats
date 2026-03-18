@@ -5,8 +5,14 @@ require_once __DIR__ . '/db/connect.php';
 try {
     $pdo = get_pdo();
     $matches = $pdo->query(
-        'SELECT id, match_date, opponent, match_type, tournament_name FROM matches ORDER BY match_date DESC, id DESC'
+        'SELECT * FROM matches ORDER BY match_date DESC, id DESC'
     )->fetchAll();
+    // match_type / tournament_name カラムが未追加の既存DBでも動くようデフォルト保証
+    foreach ($matches as &$m) {
+        $m['match_type']      = $m['match_type']      ?? 'friendly';
+        $m['tournament_name'] = $m['tournament_name'] ?? '';
+    }
+    unset($m);
     // 選手リストを players テーブルから取得（登録済み全選手を表示）
     $player_names = $pdo->query(
         'SELECT name FROM players ORDER BY number ASC, name ASC'
