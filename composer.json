@@ -1,0 +1,11 @@
+{
+    "name": "amisterstats/soccer-stats",
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    }
+}

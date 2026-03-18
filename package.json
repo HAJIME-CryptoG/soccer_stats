@@ -1,0 +1,10 @@
+{
+    "name": "amisterstats-tests",
+    "version": "1.0.0",
+    "scripts": {
+        "test": "jest --verbose"
+    },
+    "devDependencies": {
+        "jest": "^29.0.0"
+    }
+}
