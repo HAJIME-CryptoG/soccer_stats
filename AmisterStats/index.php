@@ -14,6 +14,9 @@ $title = 'AmisterStats';
 <body>
     <header class="app-header">
         <h1>&#9917; AmisterStats</h1>
+        <button class="hamburger-btn" onclick="openNav()" aria-label="メニューを開く">
+            <span></span><span></span><span></span>
+        </button>
     </header>
 
     <main class="container">
@@ -40,5 +43,6 @@ $title = 'AmisterStats';
             </a>
         </nav>
     </main>
+    <?php $nav_current = 'home'; require __DIR__ . '/partials/nav_drawer.php'; ?>
 </body>
 </html>

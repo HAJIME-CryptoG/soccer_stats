@@ -87,6 +87,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare('DELETE FROM matches WHERE id=?')->execute([$id]);
                 $flash[] = ['success', '試合を削除しました'];
             }
+
+        } elseif ($type === 'player_update') {
+            $id     = (int)($_POST['player_id']     ?? 0);
+            $name   = trim($_POST['player_name']    ?? '');
+            $number = (int)($_POST['player_number'] ?? 0);
+            $team   = trim($_POST['player_team']    ?? '');
+            if (!$id || $name === '') {
+                $flash[] = ['error', '選手名を入力してください'];
+            } else {
+                $pdo->prepare('UPDATE players SET name=?, number=?, team=? WHERE id=?')
+                    ->execute([$name, $number, $team, $id]);
+                $flash[] = ['success', "選手「{$name}」を更新しました"];
+            }
+
+        } elseif ($type === 'player_delete') {
+            $id = (int)($_POST['player_id'] ?? 0);
+            if ($id) {
+                $pdo->prepare('DELETE FROM players WHERE id=?')->execute([$id]);
+                $flash[] = ['success', '選手を削除しました'];
+            }
+
+        } elseif ($type === 'action_update') {
+            $id     = (int)($_POST['action_id']     ?? 0);
+            $name   = trim($_POST['action_name']    ?? '');
+            $points = (int)($_POST['action_points'] ?? 0);
+            $cat    = $points >= 0 ? 'positive' : 'negative';
+            if (!$id || $name === '') {
+                $flash[] = ['error', '行為名を入力してください'];
+            } else {
+                $pdo->prepare('UPDATE actions SET name=?, point_value=?, category=? WHERE id=?')
+                    ->execute([$name, $points, $cat, $id]);
+                $flash[] = ['success', "行為「{$name}」を更新しました"];
+            }
+
+        } elseif ($type === 'action_delete') {
+            $id = (int)($_POST['action_id'] ?? 0);
+            if ($id) {
+                $pdo->prepare('DELETE FROM actions WHERE id=?')->execute([$id]);
+                $flash[] = ['success', '行為を削除しました'];
+            }
         }
 
     } catch (Exception $e) {
@@ -119,6 +159,9 @@ try {
     <header class="app-header" style="background:#6a1b9a;">
         <a class="back-btn" href="index.php" aria-label="ホームへ戻る">&#8592;</a>
         <h1>&#9881;&#65039; マスター登録</h1>
+        <button class="hamburger-btn" onclick="openNav()" aria-label="メニューを開く">
+            <span></span><span></span><span></span>
+        </button>
     </header>
 
     <main class="container">
@@ -171,7 +214,7 @@ try {
                 <?php else: ?>
                     <table class="stats-table">
                         <thead>
-                            <tr><th>#</th><th>氏名</th><th>チーム</th></tr>
+                            <tr><th>#</th><th>氏名</th><th>チーム</th><th></th></tr>
                         </thead>
                         <tbody>
                             <?php foreach ($players as $p): ?>
@@ -179,10 +222,56 @@ try {
                                     <td><?= (int)$p['number'] ?></td>
                                     <td><?= htmlspecialchars($p['name']) ?></td>
                                     <td><?= htmlspecialchars($p['team']) ?></td>
+                                    <td style="white-space:nowrap;">
+                                        <button type="button"
+                                            style="font-size:.75rem;padding:.2rem .5rem;background:#1565c0;color:#fff;border:none;border-radius:4px;cursor:pointer;"
+                                            onclick='openPlayerModal(<?= htmlspecialchars(json_encode($p), ENT_QUOTES) ?>)'>
+                                            編集
+                                        </button>
+                                        <form method="post" action="register.php#player" style="display:inline;"
+                                              onsubmit="return confirm('この選手を削除しますか？')">
+                                            <input type="hidden" name="type" value="player_delete">
+                                            <input type="hidden" name="player_id" value="<?= (int)$p['id'] ?>">
+                                            <button type="submit"
+                                                style="font-size:.75rem;padding:.2rem .5rem;background:#e53935;color:#fff;border:none;border-radius:4px;cursor:pointer;">
+                                                削除
+                                            </button>
+                                        </form>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+
+                    <!-- 選手編集モーダル -->
+                    <div id="player-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;">
+                        <div style="background:#fff;border-radius:12px;padding:1.2rem;width:min(92vw,400px);">
+                            <div style="font-weight:700;font-size:1rem;margin-bottom:1rem;">選手を編集</div>
+                            <form method="post" action="register.php#player">
+                                <input type="hidden" name="type" value="player_update">
+                                <input type="hidden" name="player_id" id="edit-player-id">
+                                <div class="form-group">
+                                    <label>選手名 <span style="color:red">*</span></label>
+                                    <input type="text" name="player_name" id="edit-player-name" maxlength="100" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>背番号</label>
+                                    <input type="number" name="player_number" id="edit-player-number" min="0" max="99">
+                                </div>
+                                <div class="form-group">
+                                    <label>チーム名</label>
+                                    <input type="text" name="player_team" id="edit-player-team" maxlength="100">
+                                </div>
+                                <div style="display:flex;gap:.5rem;margin-top:.5rem;">
+                                    <button type="submit" class="btn btn-primary" style="flex:1;">更新する</button>
+                                    <button type="button" onclick="closePlayerModal()"
+                                        style="flex:1;padding:.7rem;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;">
+                                        キャンセル
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -215,7 +304,7 @@ try {
                 <?php else: ?>
                     <table class="stats-table">
                         <thead>
-                            <tr><th>行為名</th><th>ポイント</th><th>カテゴリ</th></tr>
+                            <tr><th>行為名</th><th>ポイント</th><th>カテゴリ</th><th></th></tr>
                         </thead>
                         <tbody>
                             <?php foreach ($actions as $a): ?>
@@ -223,10 +312,52 @@ try {
                                     <td><?= htmlspecialchars($a['name']) ?></td>
                                     <td><?= $a['point_value'] >= 0 ? '+' : '' ?><?= (int)$a['point_value'] ?></td>
                                     <td><?= $a['category'] === 'positive' ? '&#9989;' : '&#10060;' ?></td>
+                                    <td style="white-space:nowrap;">
+                                        <button type="button"
+                                            style="font-size:.75rem;padding:.2rem .5rem;background:#1565c0;color:#fff;border:none;border-radius:4px;cursor:pointer;"
+                                            onclick='openActionModal(<?= htmlspecialchars(json_encode($a), ENT_QUOTES) ?>)'>
+                                            編集
+                                        </button>
+                                        <form method="post" action="register.php#action" style="display:inline;"
+                                              onsubmit="return confirm('この行為を削除しますか？')">
+                                            <input type="hidden" name="type" value="action_delete">
+                                            <input type="hidden" name="action_id" value="<?= (int)$a['id'] ?>">
+                                            <button type="submit"
+                                                style="font-size:.75rem;padding:.2rem .5rem;background:#e53935;color:#fff;border:none;border-radius:4px;cursor:pointer;">
+                                                削除
+                                            </button>
+                                        </form>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+
+                    <!-- 行為編集モーダル -->
+                    <div id="action-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;">
+                        <div style="background:#fff;border-radius:12px;padding:1.2rem;width:min(92vw,400px);">
+                            <div style="font-weight:700;font-size:1rem;margin-bottom:1rem;">行為を編集</div>
+                            <form method="post" action="register.php#action">
+                                <input type="hidden" name="type" value="action_update">
+                                <input type="hidden" name="action_id" id="edit-action-id">
+                                <div class="form-group">
+                                    <label>行為名 <span style="color:red">*</span></label>
+                                    <input type="text" name="action_name" id="edit-action-name" maxlength="100" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>ポイント値（負値=減点）</label>
+                                    <input type="number" name="action_points" id="edit-action-points" min="-10" max="10">
+                                </div>
+                                <div style="display:flex;gap:.5rem;margin-top:.5rem;">
+                                    <button type="submit" class="btn btn-primary" style="flex:1;">更新する</button>
+                                    <button type="button" onclick="closeActionModal()"
+                                        style="flex:1;padding:.7rem;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;">
+                                        キャンセル
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -370,7 +501,42 @@ try {
     </main>
 
     <script>
-    // 編集モーダル
+    // 選手編集モーダル
+    function openPlayerModal(p) {
+        document.getElementById('edit-player-id').value     = p.id;
+        document.getElementById('edit-player-name').value   = p.name;
+        document.getElementById('edit-player-number').value = p.number;
+        document.getElementById('edit-player-team').value   = p.team || '';
+        document.getElementById('player-modal').style.display = 'flex';
+    }
+    function closePlayerModal() {
+        document.getElementById('player-modal').style.display = 'none';
+    }
+    const _playerModal = document.getElementById('player-modal');
+    if (_playerModal) {
+        _playerModal.addEventListener('click', function(e) {
+            if (e.target === this) closePlayerModal();
+        });
+    }
+
+    // 行為編集モーダル
+    function openActionModal(a) {
+        document.getElementById('edit-action-id').value     = a.id;
+        document.getElementById('edit-action-name').value   = a.name;
+        document.getElementById('edit-action-points').value = a.point_value;
+        document.getElementById('action-modal').style.display = 'flex';
+    }
+    function closeActionModal() {
+        document.getElementById('action-modal').style.display = 'none';
+    }
+    const _actionModal = document.getElementById('action-modal');
+    if (_actionModal) {
+        _actionModal.addEventListener('click', function(e) {
+            if (e.target === this) closeActionModal();
+        });
+    }
+
+    // 試合編集モーダル
     function openEditModal(m) {
         document.getElementById('edit-id').value         = m.id;
         document.getElementById('edit-date').value       = m.match_date;
@@ -413,24 +579,31 @@ try {
         }
     }
 
-    // タブ切り替え
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const target = this.dataset.tab;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            this.classList.add('active');
-            document.getElementById('tab-' + target).classList.add('active');
+    // タブ切り替え（イベント委譲）
+    function switchTab(name) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        const btn = document.querySelector('[data-tab="' + name + '"]');
+        const content = document.getElementById('tab-' + name);
+        if (btn) btn.classList.add('active');
+        if (content) content.classList.add('active');
+    }
+    const _tabBar = document.querySelector('.tab-bar');
+    if (_tabBar) {
+        _tabBar.addEventListener('click', function(e) {
+            const btn = e.target.closest('.tab-btn');
+            if (btn && btn.dataset.tab) switchTab(btn.dataset.tab);
         });
-    });
+    }
 
     // URLハッシュに応じてタブを自動切り替え
     (function () {
         const hash = location.hash.replace('#', '');
         if (['player', 'action', 'match'].includes(hash)) {
-            document.querySelector(`[data-tab="${hash}"]`)?.click();
+            switchTab(hash);
         }
     })();
     </script>
+    <?php $nav_current = 'register'; require __DIR__ . '/partials/nav_drawer.php'; ?>
 </body>
 </html>
