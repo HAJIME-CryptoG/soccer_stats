@@ -7,9 +7,9 @@ try {
     $matches = $pdo->query(
         'SELECT id, match_date, opponent, match_type, tournament_name FROM matches ORDER BY match_date DESC, id DESC'
     )->fetchAll();
-    // 選手リストを play_logs から動的取得
+    // 選手リストを players テーブルから取得（登録済み全選手を表示）
     $player_names = $pdo->query(
-        "SELECT DISTINCT player_name FROM play_logs ORDER BY player_name"
+        'SELECT name FROM players ORDER BY number ASC, name ASC'
     )->fetchAll(PDO::FETCH_COLUMN);
     $db_ok = true;
 } catch (Exception $e) {
