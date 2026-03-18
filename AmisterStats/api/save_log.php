@@ -54,10 +54,10 @@ try {
             respond_error(400, 'batch_id が不正です');
         }
         if (empty($acts)) {
-            respond_error(400, '行為が選択されていません');
+            respond_error(400, 'プレーが選択されていません');
         }
         if (count($acts) > MAX_ACTS) {
-            respond_error(400, '行為の選択数が多すぎます');
+            respond_error(400, 'プレーの選択数が多すぎます');
         }
 
         // ---- 一括 INSERT ----
