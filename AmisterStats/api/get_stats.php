@@ -26,21 +26,19 @@ try {
 
     $whereSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
-    /* ---- 行為リストを play_logs から動的取得（全期間・全フィルター横断で軸を固定） ---- */
-    $of_actions = $pdo->query(
-        "SELECT DISTINCT action FROM play_logs WHERE phase='offense' ORDER BY action"
-    )->fetchAll(PDO::FETCH_COLUMN);
-    $df_actions = $pdo->query(
-        "SELECT DISTINCT action FROM play_logs WHERE phase='defense' ORDER BY action"
-    )->fetchAll(PDO::FETCH_COLUMN);
-
-    /* ---- play_logsにデータがない場合は record.php と同じ固定リストをフォールバック ---- */
-    if (empty($of_actions)) {
-        $of_actions = ['アシスト','オフサイド','キーパス','センタリング','シュート内','シュート外','ドリブル失敗','ドリブル成功','パス失敗','パス成功'];
-    }
-    if (empty($df_actions)) {
-        $df_actions = ['インターセプト','カバーリング','クリア(外)','クリア(相手)','クリア(味方)','シュートブロック','セービング','スプリント20m','ブレイクアウェイ','ボール奪取','パス成功/SK'];
-    }
+    /* ---- 行為リストは record.php と同じ固定リストを使用 ----
+       DB の phase カラムに頼ると、誤ったタブで記録された場合に
+       OF/DF が混在するため、アクション名で判別する方式に変更。
+    ---- */
+    $of_actions = [
+        'パス成功','パス失敗','キーパス','アシスト','センタリング',
+        'シュート内','シュート外','ドリブル成功','ドリブル失敗','オフサイド',
+    ];
+    $df_actions = [
+        'ボール奪取','インターセプト','シュートブロック','クリア(味方)',
+        'セービング','ブレイクアウェイ','パス成功/SK','カバーリング',
+        'スプリント20m','クリア(相手)','クリア(外)',
+    ];
 
     /* ---- play_logs から集計 ---- */
     $sql = "
@@ -98,16 +96,18 @@ try {
         $p['actions']      = [];
 
         // オフェンス専用チャートデータ
+        // ※ phase='offense'/'defense' 両方を合算（記録時のタブ誤操作に対応）
         $of_counts = [];
         foreach ($of_actions as $act) {
-            $of_counts[] = $p['offense'][$act] ?? 0;
+            $of_counts[] = ($p['offense'][$act] ?? 0) + ($p['defense'][$act] ?? 0);
         }
         $p['of_chart_data'] = $of_counts;
 
         // ディフェンス専用チャートデータ
+        // ※ 同上
         $df_counts = [];
         foreach ($df_actions as $act) {
-            $df_counts[] = $p['defense'][$act] ?? 0;
+            $df_counts[] = ($p['offense'][$act] ?? 0) + ($p['defense'][$act] ?? 0);
         }
         $p['df_chart_data'] = $df_counts;
     }
