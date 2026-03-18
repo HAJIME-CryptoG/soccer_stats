@@ -391,10 +391,13 @@ try {
         document.getElementById('edit-tournament-group').style.display =
             val === 'official' ? '' : 'none';
     }
-    // モーダル外クリックで閉じる
-    document.getElementById('edit-modal').addEventListener('click', function(e) {
-        if (e.target === this) closeEditModal();
-    });
+    // モーダル外クリックで閉じる（試合がゼロの場合はモーダルが存在しないのでnullチェック）
+    const _editModal = document.getElementById('edit-modal');
+    if (_editModal) {
+        _editModal.addEventListener('click', function(e) {
+            if (e.target === this) closeEditModal();
+        });
+    }
 
     // 大会名フィールドの表示切り替え
     function toggleTournament(val) {
