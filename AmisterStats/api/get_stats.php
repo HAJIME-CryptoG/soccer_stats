@@ -34,6 +34,14 @@ try {
         "SELECT DISTINCT action FROM play_logs WHERE phase='defense' ORDER BY action"
     )->fetchAll(PDO::FETCH_COLUMN);
 
+    /* ---- play_logsにデータがない場合は record.php と同じ固定リストをフォールバック ---- */
+    if (empty($of_actions)) {
+        $of_actions = ['アシスト','オフサイド','キーパス','センタリング','シュート内','シュート外','ドリブル失敗','ドリブル成功','パス失敗','パス成功'];
+    }
+    if (empty($df_actions)) {
+        $df_actions = ['インターセプト','カバーリング','クリア(外)','クリア(相手)','クリア(味方)','シュートブロック','セービング','スプリント20m','ブレイクアウェイ','ボール奪取','パス成功/SK'];
+    }
+
     /* ---- play_logs から集計 ---- */
     $sql = "
         SELECT player_name, action, phase, COUNT(*) AS cnt

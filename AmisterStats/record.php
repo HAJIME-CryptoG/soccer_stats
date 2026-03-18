@@ -118,8 +118,8 @@ function esc(string $s): string {
      ================================================================ -->
 <div class="match-bar">
     <label for="matchSelect">🏟️</label>
-    <select id="matchSelect" onchange="state.matchId = this.value || null">
-        <option value="">試合を選択（任意）</option>
+    <select id="matchSelect" onchange="onMatchChange(this.value)">
+        <option value="">▼ 試合を選択してください</option>
         <?php foreach ($matches as $m): ?>
         <option value="<?= esc((string)$m['id']) ?>">
             <?php
@@ -262,6 +262,40 @@ const state = {
     matchId:         null,       // 選択中の試合ID
 };
 
+/* ---------- 試合選択（LocalStorageで保持） ---------- */
+window.onMatchChange = function(val) {
+    state.matchId = val || null;
+    if (state.matchId) {
+        localStorage.setItem('amister_match_id', state.matchId);
+    } else {
+        localStorage.removeItem('amister_match_id');
+    }
+    updateMatchBarStyle();
+};
+
+function updateMatchBarStyle() {
+    const sel = document.getElementById('matchSelect');
+    if (!sel) return;
+    sel.style.borderColor = state.matchId ? '#4fa3ff' : '#e53935';
+    sel.style.background  = state.matchId ? '#2a2f45' : '#3a1f1f';
+}
+
+// ページロード時: LocalStorageから試合IDを復元
+(function restoreMatch() {
+    const saved = localStorage.getItem('amister_match_id');
+    if (!saved) { updateMatchBarStyle(); return; }
+    const sel = document.getElementById('matchSelect');
+    if (!sel) return;
+    const opt = sel.querySelector(`option[value="${saved}"]`);
+    if (opt) {
+        sel.value     = saved;
+        state.matchId = saved;
+    } else {
+        localStorage.removeItem('amister_match_id');
+    }
+    updateMatchBarStyle();
+})();
+
 /* ---------- 時計 ---------- */
 (function tick() {
     const el = document.getElementById('clock');
@@ -372,6 +406,11 @@ function updateRegisterBtn() {
 /* ---------- 登録（一括保存）---------- */
 window.register = async function () {
     if (!state.selectedPlayer || state.selectedActions.length === 0) return;
+
+    // 試合未選択の場合は警告（登録は続行するが試合と紐づかない）
+    if (!state.matchId) {
+        showToast('⚠ 試合未選択。上のセレクトで試合を選ぶと集計で試合別に見られます');
+    }
 
     const registerBtn = document.getElementById('registerBtn');
     const undoBtn     = document.getElementById('undoBtn');
