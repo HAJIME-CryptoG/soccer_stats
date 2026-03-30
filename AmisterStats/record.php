@@ -22,12 +22,16 @@ try {
     // DB 接続失敗は無視（試合リストなしで動作）
 }
 
-/* ---- 固定データ ---- */
-$players = [
-    'いぶき', 'けいご', 'けんゆう', 'しおん',
-    'しょうや', 'そうすけ', 'たいち', 'とも',
-    'とわ', 'ひさと', 'ゆうし', 'りょう',
-];
+/* ---- 選手リスト: DBから取得（登録なしの場合は空） ---- */
+$players = [];
+try {
+    if (!isset($pdo)) $pdo = get_pdo();
+    $players = $pdo->query(
+        'SELECT name FROM players ORDER BY number ASC, name ASC'
+    )->fetchAll(PDO::FETCH_COLUMN);
+} catch (Exception $e) {
+    $players = [];
+}
 
 /**
  * OF行為: type は 'success'(青) / 'fail'(赤) / 'special'(橙)
@@ -42,6 +46,8 @@ $of_actions = [
     ['name' => 'シュート外',   'type' => 'fail'],
     ['name' => 'ドリブル成功', 'type' => 'success'],
     ['name' => 'ドリブル失敗', 'type' => 'fail'],
+    ['name' => 'トラップ成功', 'type' => 'success'],
+    ['name' => 'トラップ失敗', 'type' => 'fail'],
     ['name' => 'オフサイド',   'type' => 'fail'],
 ];
 
@@ -141,6 +147,11 @@ function esc(string $s): string {
     <section class="player-panel" aria-label="選手選択">
         <div class="panel-label">選手</div>
         <div class="player-grid-v2" id="playerGrid">
+            <?php if (empty($players)): ?>
+            <div style="grid-column:1/-1;color:rgba(255,255,255,.45);font-size:.75rem;text-align:center;padding:.5rem 0;">
+                選手未登録<br>マスター登録から追加してください
+            </div>
+            <?php else: ?>
             <?php foreach ($players as $name): ?>
             <button class="player-btn-v2"
                     type="button"
@@ -149,6 +160,7 @@ function esc(string $s): string {
                 <?= esc($name) ?>
             </button>
             <?php endforeach; ?>
+            <?php endif; ?>
         </div>
     </section>
 
