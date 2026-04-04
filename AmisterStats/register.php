@@ -136,6 +136,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $flash[] = ['success', 'プレーを削除しました'];
             }
 
+        } elseif ($type === 'delete_orphaned_logs') {
+            $deleted = $pdo->exec('
+                DELETE FROM play_logs
+                WHERE match_id IS NULL
+                   OR match_id NOT IN (SELECT id FROM matches)
+            ');
+            $flash[] = ['success', "試合に紐づいていないスタッツを削除しました（{$deleted}件）。"];
+
         } elseif ($type === 'reset_logs') {
             $confirm = trim($_POST['reset_confirm'] ?? '');
             if ($confirm !== 'リセット') {
@@ -531,6 +539,38 @@ try {
                     </div>
                 <?php endif; ?>
             </div>
+        </div>
+
+        <!-- ================================================================
+             孤立スタッツの削除（試合に紐づいていないレコード）
+             ================================================================ -->
+        <div class="card" style="border:2px solid #f57c00;margin-top:1.5rem;">
+            <div class="card-title" style="color:#f57c00;">🧹 孤立スタッツの削除</div>
+            <p style="font-size:.85rem;color:#555;margin:0 0 .8rem;">
+                試合（matches）に紐づいていない play_logs レコードを削除します。<br>
+                <code>match_id</code> が NULL または存在しない試合IDを参照しているデータが対象です。
+            </p>
+            <?php
+                try {
+                    $orphan_count = (int)get_pdo()->query('
+                        SELECT COUNT(*) FROM play_logs
+                        WHERE match_id IS NULL
+                           OR match_id NOT IN (SELECT id FROM matches)
+                    ')->fetchColumn();
+                } catch (Exception $e) { $orphan_count = '?'; }
+            ?>
+            <p style="font-size:.9rem;font-weight:700;margin:0 0 .8rem;">
+                孤立レコード数：<span style="color:#f57c00;"><?= $orphan_count ?>件</span>
+            </p>
+            <form method="post" action="register.php"
+                  onsubmit="return confirm('試合に紐づいていないスタッツ <?= $orphan_count ?>件を削除します。よろしいですか？')">
+                <input type="hidden" name="type" value="delete_orphaned_logs">
+                <button type="submit" class="btn btn-block"
+                        style="background:#f57c00;color:#fff;font-weight:700;"
+                        <?= $orphan_count === 0 ? 'disabled' : '' ?>>
+                    🧹 孤立スタッツを削除する
+                </button>
+            </form>
         </div>
 
         <!-- ================================================================
