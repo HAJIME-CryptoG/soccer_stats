@@ -6,10 +6,13 @@
  */
 ?>
 <style>
-/* ナビゲーションドロワー — 外部CSSが未ロードの場合も確実に動作させる保険スタイル */
+/* ===== ハンバーガーボタン（外部CSS未ロード時の保険） ===== */
+.hamburger-btn{background:none;border:none;color:#fff;cursor:pointer;padding:.3rem .45rem;border-radius:6px;display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto;}
+.hamburger-btn span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;}
+/* ===== ナビゲーションドロワー（外部CSS未ロード時の保険） ===== */
 .nav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;}
 .nav-overlay.open{opacity:1;pointer-events:auto;}
-.nav-drawer{position:fixed;top:0;right:0;width:240px;height:100%;background:#fff;z-index:201;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:-4px 0 20px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;}
+.nav-drawer{position:fixed;top:0;right:0;width:240px;height:100%;background:#fff;z-index:9999;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:-4px 0 20px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;}
 .nav-drawer.open{transform:translateX(0);}
 .nav-drawer-header{background:#1a7f3c;color:#fff;padding:.9rem 1rem;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-shrink:0;}
 .nav-drawer-close{background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;padding:.2rem .4rem;border-radius:4px;line-height:1;}

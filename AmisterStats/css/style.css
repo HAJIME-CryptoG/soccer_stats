@@ -566,8 +566,8 @@ input[type="number"]:focus {
 .record-layout {
     display: flex;
     flex-direction: column;
-    height: 100dvh;        /* iOS Safari 対応の動的ビューポート */
-    overflow: hidden;
+    min-height: 100dvh;    /* iOS Safari 対応の動的ビューポート */
+    overflow-y: auto;      /* 上下スクロール可能 */
     padding-bottom: 0;     /* 既定の body padding を上書き */
     background: #111827;
 }
@@ -664,7 +664,6 @@ input[type="number"]:focus {
 .split-view {
     display: flex;
     flex: 1;
-    overflow: hidden;
     min-height: 0;
 }
 
@@ -678,7 +677,7 @@ input[type="number"]:focus {
     padding: .4rem;
     gap: .3rem;
     flex-shrink: 0;
-    overflow: hidden;
+    overflow-y: auto;
 }
 
 .panel-label {
@@ -790,6 +789,9 @@ input[type="number"]:focus {
     border-top: 1px solid rgba(255,255,255,.1);
     padding: .45rem .55rem;
     flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
     /* iOS ホームバー考慮 */
     padding-bottom: max(.45rem, env(safe-area-inset-bottom));
 }

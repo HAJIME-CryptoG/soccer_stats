@@ -29,14 +29,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name   = trim($_POST['action_name']  ?? '');
             $points = (int)($_POST['action_points'] ?? 1);
             $cat    = $points >= 0 ? 'positive' : 'negative';
+            $phase  = in_array($_POST['action_phase'] ?? '', ['offense','defense','both']) ? $_POST['action_phase'] : 'both';
 
             if ($name === '') {
                 $flash[] = ['error', 'プレー名を入力してください'];
             } else {
+                // phase カラムがなければ自動追加
+                $cols = $pdo->query("SHOW COLUMNS FROM actions LIKE 'phase'")->fetchAll();
+                if (empty($cols)) {
+                    $pdo->exec("ALTER TABLE actions ADD COLUMN phase ENUM('offense','defense','both') NOT NULL DEFAULT 'both'");
+                }
                 $pdo->prepare(
-                    'INSERT INTO actions (name, point_value, category) VALUES (?, ?, ?)'
-                )->execute([$name, $points, $cat]);
-                $flash[] = ['success', "プレー「{$name}」({$points}pt) を登録しました"];
+                    'INSERT INTO actions (name, point_value, category, phase) VALUES (?, ?, ?, ?)'
+                )->execute([$name, $points, $cat, $phase]);
+                $phase_label = ['offense'=>'オフェンス','defense'=>'ディフェンス','both'=>'両方'][$phase];
+                $flash[] = ['success', "プレー「{$name}」({$points}pt / {$phase_label}) を登録しました"];
             }
 
         } elseif ($type === 'match') {
@@ -113,11 +120,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name   = trim($_POST['action_name']    ?? '');
             $points = (int)($_POST['action_points'] ?? 0);
             $cat    = $points >= 0 ? 'positive' : 'negative';
+            $phase  = in_array($_POST['action_phase'] ?? '', ['offense','defense','both']) ? $_POST['action_phase'] : 'both';
             if (!$id || $name === '') {
                 $flash[] = ['error', 'プレー名を入力してください'];
             } else {
-                $pdo->prepare('UPDATE actions SET name=?, point_value=?, category=? WHERE id=?')
-                    ->execute([$name, $points, $cat, $id]);
+                $pdo->prepare('UPDATE actions SET name=?, point_value=?, category=?, phase=? WHERE id=?')
+                    ->execute([$name, $points, $cat, $phase, $id]);
                 $flash[] = ['success', "プレー「{$name}」を更新しました"];
             }
 
@@ -126,6 +134,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id) {
                 $pdo->prepare('DELETE FROM actions WHERE id=?')->execute([$id]);
                 $flash[] = ['success', 'プレーを削除しました'];
+            }
+
+        } elseif ($type === 'reset_logs') {
+            $confirm = trim($_POST['reset_confirm'] ?? '');
+            if ($confirm !== 'リセット') {
+                $flash[] = ['error', '確認ワードが一致しません'];
+            } else {
+                $count = (int)$pdo->query('SELECT COUNT(*) FROM play_logs')->fetchColumn();
+                $pdo->exec('DELETE FROM play_logs');
+                $flash[] = ['success', "プレーデータを全件削除しました（{$count}件）。選手・試合・プレー設定はそのまま残っています。"];
             }
         }
 
@@ -292,6 +310,14 @@ try {
                         <input type="number" id="action_points" name="action_points"
                                placeholder="例: 1 または -1" value="1" min="-10" max="10">
                     </div>
+                    <div class="form-group">
+                        <label for="action_phase">フェーズ</label>
+                        <select id="action_phase" name="action_phase" style="width:100%;padding:.6rem .8rem;border:1px solid var(--color-border);border-radius:8px;font-size:.95rem;background:#fff;">
+                            <option value="offense">⚽ オフェンス</option>
+                            <option value="defense">🛡️ ディフェンス</option>
+                            <option value="both" selected>両方</option>
+                        </select>
+                    </div>
                     <button class="btn btn-primary btn-block" type="submit">登録する</button>
                 </form>
             </div>
@@ -304,14 +330,16 @@ try {
                 <?php else: ?>
                     <table class="stats-table">
                         <thead>
-                            <tr><th>プレー名</th><th>ポイント</th><th>カテゴリ</th><th></th></tr>
+                            <tr><th>プレー名</th><th>pt</th><th></th><th>フェーズ</th><th></th></tr>
                         </thead>
                         <tbody>
                             <?php foreach ($actions as $a): ?>
+                                <?php $phase_labels = ['offense'=>'⚽OF','defense'=>'🛡️DF','both'=>'両方']; ?>
                                 <tr>
                                     <td><?= htmlspecialchars($a['name']) ?></td>
                                     <td><?= $a['point_value'] >= 0 ? '+' : '' ?><?= (int)$a['point_value'] ?></td>
                                     <td><?= $a['category'] === 'positive' ? '&#9989;' : '&#10060;' ?></td>
+                                    <td><?= $phase_labels[$a['phase'] ?? 'both'] ?? '両方' ?></td>
                                     <td style="white-space:nowrap;">
                                         <button type="button"
                                             style="font-size:.75rem;padding:.2rem .5rem;background:#1565c0;color:#fff;border:none;border-radius:4px;cursor:pointer;"
@@ -347,6 +375,14 @@ try {
                                 <div class="form-group">
                                     <label>ポイント値（負値=減点）</label>
                                     <input type="number" name="action_points" id="edit-action-points" min="-10" max="10">
+                                </div>
+                                <div class="form-group">
+                                    <label>フェーズ</label>
+                                    <select name="action_phase" id="edit-action-phase" style="width:100%;padding:.6rem .8rem;border:1px solid var(--color-border);border-radius:8px;font-size:.95rem;background:#fff;">
+                                        <option value="offense">⚽ オフェンス</option>
+                                        <option value="defense">🛡️ ディフェンス</option>
+                                        <option value="both">両方</option>
+                                    </select>
                                 </div>
                                 <div style="display:flex;gap:.5rem;margin-top:.5rem;">
                                     <button type="submit" class="btn btn-primary" style="flex:1;">更新する</button>
@@ -497,6 +533,42 @@ try {
             </div>
         </div>
 
+        <!-- ================================================================
+             危険ゾーン：プレーデータ全リセット
+             ================================================================ -->
+        <div class="card" style="border:2px solid #e53935;margin-top:1.5rem;">
+            <div class="card-title" style="color:#e53935;">⚠️ プレーデータのリセット</div>
+            <p style="font-size:.85rem;color:#555;margin:0 0 .8rem;">
+                <strong>play_logs テーブルを全件削除します。</strong><br>
+                選手・試合・プレー設定のデータは削除されません。<br>
+                テスト入力を一括削除してから本番配布する用途向けです。
+            </p>
+            <?php
+                try {
+                    $log_count = (int)get_pdo()->query('SELECT COUNT(*) FROM play_logs')->fetchColumn();
+                } catch (Exception $e) { $log_count = '?'; }
+            ?>
+            <p style="font-size:.9rem;font-weight:700;margin:0 0 .8rem;">
+                現在の記録数：<span style="color:#e53935;"><?= $log_count ?>件</span>
+            </p>
+            <form method="post" action="register.php" id="resetForm"
+                  onsubmit="return confirmReset()">
+                <input type="hidden" name="type" value="reset_logs">
+                <div class="form-group">
+                    <label for="reset_confirm">
+                        確認のため <strong>「リセット」</strong> と入力してください
+                    </label>
+                    <input type="text" id="reset_confirm" name="reset_confirm"
+                           placeholder="リセット" autocomplete="off"
+                           style="border-color:#e53935;">
+                </div>
+                <button type="submit" class="btn btn-block"
+                        style="background:#e53935;color:#fff;font-weight:700;">
+                    🗑️ プレーデータを全件削除する
+                </button>
+            </form>
+        </div>
+
         <?php endif; ?>
     </main>
 
@@ -524,6 +596,7 @@ try {
         document.getElementById('edit-action-id').value     = a.id;
         document.getElementById('edit-action-name').value   = a.name;
         document.getElementById('edit-action-points').value = a.point_value;
+        document.getElementById('edit-action-phase').value  = a.phase || 'both';
         document.getElementById('action-modal').style.display = 'flex';
     }
     function closeActionModal() {
@@ -594,6 +667,16 @@ try {
             const btn = e.target.closest('.tab-btn');
             if (btn && btn.dataset.tab) switchTab(btn.dataset.tab);
         });
+    }
+
+    // プレーデータリセット確認
+    function confirmReset() {
+        const val = document.getElementById('reset_confirm').value;
+        if (val !== 'リセット') {
+            alert('「リセット」と正確に入力してください');
+            return false;
+        }
+        return confirm('本当にプレーデータを全件削除しますか？\nこの操作は取り消せません。');
     }
 
     // URLハッシュに応じてタブを自動切り替え

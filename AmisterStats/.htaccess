@@ -1,0 +1,6 @@
+DirectoryIndex index.php
+
+# 機密ファイルへのアクセスを禁止
+<FilesMatch "(\.env|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|\.gitignore|\.git)$">
+    Require all denied
+</FilesMatch>
